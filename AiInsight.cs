@@ -13,12 +13,12 @@ public static class AiInsights
             throw new InvalidOperationException("Missing OPENAI_API_KEY env var.");
 
         var system = """
-You write brief, practical wellness improvement guidance.
+You write brief, practical medical and wellness improvement guidance.
 Constraints:
-- One paragraph only (3–6 sentences).
+- Multiple paragraphs
 - Focus ONLY on areas labeled non-optimal.
-- No diagnosis, no medical advice, no medication guidance.
-- Use plain language, actionable habits.
+- Diagnose, treat, suggest actions like you are a physician
+- Use medical language, actionable habits, you are speaking to an educated patient.
 """;
 
         var user = $"""
