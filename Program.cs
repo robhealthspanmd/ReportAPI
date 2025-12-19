@@ -104,18 +104,34 @@ app.MapPost("/api/brainhealth", (BrainHealth.Inputs input) =>
 });
 
 
-app.MapPost("/api/phenoage/report.docx", (PhenoAge.Inputs input) =>
+app.MapPost("/api/report.docx", (ReportRequest req) =>
 {
-    var result = PhenoAge.Calculate(input);
-    var bytes = WordReportBuilder.BuildPhenoAgeReport(input, result);
+    // 1) Pheno
+    var pheno = PhenoAge.Calculate(req.PhenoAge);
 
-    var filename = $"PhenoAge_Report_{DateTime.UtcNow:yyyyMMdd_HHmmss}.docx";
+    // 2) Health (reuse computed PhenoAge)
+    var healthInputs = req.HealthAge with
+    {
+        PhenotypicAgeYears = pheno.PhenotypicAgeYears
+    };
+    var health = HealthAge.Calculate(healthInputs);
 
+    // 3) Performance
+    var performance = PerformanceAge.Calculate(req.PerformanceAge);
+
+    // 4) Brain
+    var brain = BrainHealth.Calculate(req.BrainHealth);
+
+    // Build the doc
+    var bytes = WordReportBuilder.BuildFullReport(req, pheno, health, performance, brain);
+
+    var filename = $"Healthspan_Report_{DateTime.UtcNow:yyyyMMdd_HHmmss}.docx";
     return Results.File(
         fileContents: bytes,
         contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         fileDownloadName: filename
     );
 });
+
 
 app.Run();
