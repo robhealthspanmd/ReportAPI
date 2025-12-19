@@ -104,7 +104,7 @@ app.MapPost("/api/brainhealth", (BrainHealth.Inputs input) =>
 });
 
 
-app.MapPost("/api/report.docx", (ReportRequest req) =>
+app.MapPost("/api/report.docx", async (ReportRequest req) =>
 {
     // 1) Pheno
     var pheno = PhenoAge.Calculate(req.PhenoAge);
@@ -122,8 +122,28 @@ app.MapPost("/api/report.docx", (ReportRequest req) =>
     // 4) Brain
     var brain = BrainHealth.Calculate(req.BrainHealth);
 
-    // Build the doc
-    var bytes = WordReportBuilder.BuildFullReport(req, pheno, health, performance, brain);
+    // 5) Build a small summary object for GPT (NO raw labs required)
+    var summaryForAi = new
+    {
+        chronologicalAgeYears = req.PhenoAge.ChronologicalAgeYears,
+        phenotypicAgeYears = pheno.PhenotypicAgeYears,
+        mortality10Yr = pheno.Mortality10Yr,
+
+        healthAgeYears = health.HealthAgeFinal,
+        healthDeltaYears = health.DeltaVsChronoYears,
+
+        performanceAgeYears = performance.PerformanceAge,
+        performanceDeltaYears = performance.DeltaVsAgeYears,
+
+        brainScore = brain.TotalScore,
+        brainLevel = brain.Level
+    };
+
+    // 6) Call GPT for improvement paragraph
+    var improvementParagraph = await AiInsights.GenerateImprovementParagraphAsync(summaryForAi);
+
+    // 7) Build the Word doc (now includes improvements)
+    var bytes = WordReportBuilder.BuildFullReport(req, pheno, health, performance, brain, improvementParagraph);
 
     var filename = $"Healthspan_Report_{DateTime.UtcNow:yyyyMMdd_HHmmss}.docx";
     return Results.File(
@@ -132,6 +152,7 @@ app.MapPost("/api/report.docx", (ReportRequest req) =>
         fileDownloadName: filename
     );
 });
+
 
 
 app.Run();

@@ -7,12 +7,14 @@ using DocumentFormat.OpenXml.Wordprocessing;
 public static class WordReportBuilder
 {
     public static byte[] BuildFullReport(
-        ReportRequest request,
-        PhenoAge.Result pheno,
-        HealthAge.Result health,
-        PerformanceAge.Result performance,
-        BrainHealth.Result brain
-    )
+    ReportRequest request,
+    PhenoAge.Result pheno,
+    HealthAge.Result health,
+    PerformanceAge.Result performance,
+    BrainHealth.Result brain,
+    string improvementParagraph
+)
+
     {
         using var ms = new MemoryStream();
 
@@ -135,6 +137,10 @@ public static class WordReportBuilder
 
             // Notes
             body.Append(SectionHeader("Notes"));
+            body.Append(Spacer());
+body.Append(SectionHeader("How to Improve (Non-Optimal Areas)"));
+body.Append(ParagraphOf(improvementParagraph));
+body.Append(Spacer());
             body.Append(ParagraphOf("This report is generated from the provided inputs and scoring algorithms implemented in ReportAPI."));
 
             mainPart.Document.Save();
