@@ -1,8 +1,12 @@
 {
   "version": 2,
-  "dgSpecHash": "LxIeUxG/WsQ=",
+  "dgSpecHash": "DjfFazgTvXw=",
   "success": true,
   "projectFilePath": "C:\\Users\\rober\\ReportAPI\\ReportAPI\\ReportAPI.csproj",
-  "expectedPackageFiles": [],
+  "expectedPackageFiles": [
+    "C:\\Users\\rober\\.nuget\\packages\\documentformat.openxml\\3.3.0\\documentformat.openxml.3.3.0.nupkg.sha512",
+    "C:\\Users\\rober\\.nuget\\packages\\documentformat.openxml.framework\\3.3.0\\documentformat.openxml.framework.3.3.0.nupkg.sha512",
+    "C:\\Users\\rober\\.nuget\\packages\\system.io.packaging\\8.0.1\\system.io.packaging.8.0.1.nupkg.sha512"
+  ],
   "logs": []
 }

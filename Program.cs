@@ -1,3 +1,4 @@
+using System;
 var builder = WebApplication.CreateBuilder(args);
 
 // CORS: MVP = open. Later lock to your Lovable domain.
@@ -27,6 +28,20 @@ app.MapPost("/api/phenoage", (PhenoAge.Inputs input) =>
         mortality10Yr = r.Mortality10Yr,
         phenotypicAgeYears = r.PhenotypicAgeYears
     });
+});
+
+app.MapPost("/api/phenoage/report.docx", (PhenoAge.Inputs input) =>
+{
+    var result = PhenoAge.Calculate(input);
+    var bytes = WordReportBuilder.BuildPhenoAgeReport(input, result);
+
+    var filename = $"PhenoAge_Report_{DateTime.UtcNow:yyyyMMdd_HHmmss}.docx";
+
+    return Results.File(
+        fileContents: bytes,
+        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        fileDownloadName: filename
+    );
 });
 
 app.Run();

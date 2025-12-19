@@ -23,3 +23,9 @@ C:\Users\rober\ReportAPI\ReportAPI\obj\Debug\net8.0\refint\ReportAPI.dll
 C:\Users\rober\ReportAPI\ReportAPI\obj\Debug\net8.0\ReportAPI.pdb
 C:\Users\rober\ReportAPI\ReportAPI\obj\Debug\net8.0\ReportAPI.genruntimeconfig.cache
 C:\Users\rober\ReportAPI\ReportAPI\obj\Debug\net8.0\ref\ReportAPI.dll
+C:\Users\rober\ReportAPI\ReportAPI\bin\Debug\net8.0\DocumentFormat.OpenXml.dll
+C:\Users\rober\ReportAPI\ReportAPI\bin\Debug\net8.0\DocumentFormat.OpenXml.Framework.dll
+C:\Users\rober\ReportAPI\ReportAPI\bin\Debug\net8.0\System.IO.Packaging.dll
+C:\Users\rober\ReportAPI\ReportAPI\obj\Debug\net8.0\ReportAPI.csproj.AssemblyReference.cache
+C:\Users\rober\ReportAPI\ReportAPI\obj\Debug\net8.0\ReportAPI.sourcelink.json
+C:\Users\rober\ReportAPI\ReportAPI\obj\Debug\net8.0\ReportAPI.csproj.Up2Date
