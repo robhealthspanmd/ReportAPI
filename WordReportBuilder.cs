@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
@@ -7,217 +8,158 @@ using DocumentFormat.OpenXml.Wordprocessing;
 public static class WordReportBuilder
 {
     public static byte[] BuildFullReport(
-    ReportRequest request,
-    PhenoAge.Result pheno,
-    HealthAge.Result health,
-    PerformanceAge.Result performance,
-    BrainHealth.Result brain,
-    string improvementParagraph
-)
-
+        ReportRequest request,
+        PhenoAge.Result pheno,
+        HealthAge.Result health,
+        PerformanceAge.Result performance,
+        BrainHealth.Result brain,
+        string improvementParagraph
+    )
     {
+        var templatePath = Path.Combine(AppContext.BaseDirectory, "HealthspanAssessment.docx");
+        if (!File.Exists(templatePath))
+            throw new FileNotFoundException("HealthspanAssessment.docx not found in output directory.");
+
         using var ms = new MemoryStream();
+        using (var fs = File.OpenRead(templatePath))
+            fs.CopyTo(ms);
 
-        using (var doc = WordprocessingDocument.Create(ms, WordprocessingDocumentType.Document, true))
+        ms.Position = 0;
+
+        using (var doc = WordprocessingDocument.Open(ms, true))
         {
-            var mainPart = doc.AddMainDocumentPart();
-            mainPart.Document = new Document(new Body());
-            var body = mainPart.Document.Body!;
+            var body = doc.MainDocumentPart!.Document.Body!;
 
-            // Title
-            body.Append(ParagraphOf("Healthspan Report", bold: true, fontSizeHalfPoints: 40));
-            body.Append(ParagraphOf($"Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC", italic: true));
+            // --------------------------------------------------
+            // 1) Fill "Your Three Healthspan Scores" table
+            // --------------------------------------------------
+            var scoresTable = body
+                .Descendants<Table>()
+                .First(t => IsScoresTable(t));
 
-            body.Append(Spacer());
+            foreach (var row in scoresTable.Descendants<TableRow>())
+            {
+                var cells = row.Descendants<TableCell>().ToList();
+                if (cells.Count < 2) continue;
 
-            // ---- Summary block ----
-            body.Append(SectionHeader("Summary"));
-            body.Append(BuildTwoColumnTable(
-                ("Phenotypic Age (years)", pheno.PhenotypicAgeYears.ToString("F1")),
-                ("10-year Mortality Risk", pheno.Mortality10Yr.ToString("P2")),
-                ("Health Age (years)", health.HealthAgeFinal.ToString("F1")),
-                ("Performance Age (years)", performance.PerformanceAge.ToString("F1")),
-                ("Brain Health Score", brain.TotalScore.ToString("F1")),
-                ("Brain Health Level", brain.Level)
-            ));
+                var label = Normalize(cells[0].InnerText);
 
-            body.Append(Spacer());
+                if (label == "healthspan age")
+                    SetCell(cells[1], $"{health.HealthAgeFinal:F1}");
 
-            // ---- Phenotypic Age ----
-            body.Append(SectionHeader("Phenotypic Age"));
-            body.Append(ParagraphOf($"Phenotypic Age (years): {pheno.PhenotypicAgeYears:F1}", bold: true));
-            body.Append(ParagraphOf($"10-year Mortality Risk: {pheno.Mortality10Yr:P2}"));
-            body.Append(ParagraphOf("Model Version: phenoage-levine-2018-v1"));
+                if (label == "physical performance age")
+                    SetCell(cells[1], $"{performance.PerformanceAge:F1}");
 
-            body.Append(Spacer());
+                if (label == "brain health score")
+                    SetCell(cells[1], $"{brain.TotalScore:F0}");
+            }
 
-            body.Append(SubHeader("Phenotypic Age Inputs"));
-            body.Append(BuildTwoColumnTable(
-                ("Chronological Age (years)", request.PhenoAge.ChronologicalAgeYears.ToString("F1")),
-                ("Albumin (g/dL)", request.PhenoAge.Albumin_g_dL.ToString("F2")),
-                ("Creatinine (mg/dL)", request.PhenoAge.Creatinine_mg_dL.ToString("F2")),
-                ("Glucose (mg/dL)", request.PhenoAge.Glucose_mg_dL.ToString("F1")),
-                ("CRP (mg/L)", request.PhenoAge.CRP_mg_L.ToString("F2")),
-                ("Lymphocytes (%)", request.PhenoAge.LymphocytePercent.ToString("F1")),
-                ("MCV (fL)", request.PhenoAge.MCV_fL.ToString("F1")),
-                ("RDW (%)", request.PhenoAge.RDW_percent.ToString("F1")),
-                ("Alk Phos (U/L)", request.PhenoAge.AlkalinePhosphatase_U_L.ToString("F1")),
-                ("WBC (10^3/µL)", request.PhenoAge.WBC_10e3_per_uL.ToString("F2"))
-            ));
+            // --------------------------------------------------
+            // 2) Insert AI summary paragraph under the table
+            // --------------------------------------------------
+            scoresTable.InsertAfterSelf(
+                new Paragraph(
+                    new Run(
+                        new Text(improvementParagraph ?? "")
+                        {
+                            Space = SpaceProcessingModeValues.Preserve
+                        }
+                    )
+                )
+            );
 
-            body.Append(Spacer());
+            // --------------------------------------------------
+            // 3) Fill Metabolic Health Results section
+            // --------------------------------------------------
+            ReplaceLabel(body, "Hemoglobin A1c:", "—");
 
-            // ---- Health Age ----
-            body.Append(SectionHeader("Health Age"));
-            body.Append(ParagraphOf($"Health Age (years): {health.HealthAgeFinal:F1}", bold: true));
-            body.Append(ParagraphOf($"Δ vs Chronological (years): {health.DeltaVsChronoYears:F1}"));
-            body.Append(ParagraphOf($"Δ vs Chronological (%): {health.DeltaVsChronoPercent:P1}"));
-            body.Append(ParagraphOf($"Contribution (scaled): {health.ContributionYearsScaled:F2} years"));
+ReplaceLabel(body, "Fasting insulin:",
+    F(request.HealthAge.FastingInsulin_uIU_mL, "F1"));
 
-            body.Append(Spacer());
+ReplaceLabel(body, "HDL cholesterol:",
+    F(request.HealthAge.Hdl_mg_dL, "F0"));
 
-            body.Append(SubHeader("Health Age Breakdown (percent-of-age)"));
-            body.Append(BuildTwoColumnTable(
-                ("Z1 Body Fat", FormatZ(health.Z1_BodyFat)),
-                ("Z2 Visceral Fat", FormatZ(health.Z2_VisceralFat)),
-                ("Z3 Appendicular Muscle", FormatZ(health.Z3_AppendicularMuscle)),
-                ("Z4 Blood Pressure", FormatZ(health.Z4_BloodPressure)),
-                ("Z5 Non-HDL", FormatZ(health.Z5_NonHdl)),
-                ("Z6 HOMA-IR", FormatZ(health.Z6_HomaIr)),
-                ("Z7 TG/HDL", FormatZ(health.Z7_TgHdl)),
-                ("Z8 FIB-4", FormatZ(health.Z8_Fib4))
-            ));
+ReplaceLabel(body, "Triglycerides:",
+    F(request.HealthAge.Triglycerides_mg_dL, "F0"));
 
-            body.Append(Spacer());
+ReplaceLabel(body, "Visceral fat percentile:",
+    P(request.HealthAge.VisceralFatPercentile));
 
-            // ---- Performance Age ----
-            body.Append(SectionHeader("Performance Age"));
-            body.Append(ParagraphOf($"Performance Age (years): {performance.PerformanceAge:F1}", bold: true));
-            body.Append(ParagraphOf($"Δ vs Chronological (years): {performance.DeltaVsAgeYears:F1}"));
-            body.Append(ParagraphOf($"Δ vs Chronological (%): {performance.DeltaVsAgePercent:P1}"));
-            body.Append(ParagraphOf($"Contribution (scaled): {performance.ContributionYearsScaled:F2} years"));
+ReplaceLabel(body, "Body fat percentile:",
+    P(request.HealthAge.BodyFatPercentile));
 
-            body.Append(Spacer());
+ReplaceLabel(body, "Lean mass:",
+    P(request.HealthAge.AppendicularMusclePercentile));
 
-            body.Append(SubHeader("Performance Age Breakdown (percent-of-age)"));
-            body.Append(BuildTwoColumnTable(
-                ("Z1 VO2max", FormatZ(performance.Z1_Vo2Max)),
-                ("Z2 Quadriceps Strength", FormatZ(performance.Z2_Quadriceps)),
-                ("Z3 Grip Strength", FormatZ(performance.Z3_Grip)),
-                ("Z4 Gait Speed (Comfortable)", FormatZ(performance.Z4_GaitComfortable)),
-                ("Z5 Gait Speed (Max)", FormatZ(performance.Z5_GaitMax)),
-                ("Z6 Power", FormatZ(performance.Z6_Power)),
-                ("Z7 Balance", FormatZ(performance.Z7_Balance)),
-                ("Z8 Chair Rise", FormatZ(performance.Z8_ChairRise))
-            ));
 
-            body.Append(Spacer());
-
-            // ---- Brain Health ----
-            body.Append(SectionHeader("Brain Health"));
-            body.Append(ParagraphOf($"Brain Health Score: {brain.TotalScore:F1}", bold: true));
-            body.Append(ParagraphOf($"Brain Health Level: {brain.Level}", bold: true));
-
-            body.Append(Spacer());
-
-            body.Append(SubHeader("Brain Health Breakdown (points)"));
-            body.Append(BuildTwoColumnTable(
-                ("Cognitive", brain.CognitivePoints.ToString("F1")),
-                ("Depression", brain.DepressionPoints.ToString("F1")),
-                ("Anxiety", brain.AnxietyPoints.ToString("F1")),
-                ("Resilience", brain.ResiliencePoints.ToString("F1")),
-                ("Optimism", brain.OptimismPoints.ToString("F1")),
-                ("Meaning", brain.MeaningPoints.ToString("F1")),
-                ("Flourishing", brain.FlourishingPoints.ToString("F1")),
-                ("Sleep", brain.SleepPoints?.ToString("F1") ?? "N/A"),
-                ("Stress", brain.StressPoints?.ToString("F1") ?? "N/A")
-            ));
-
-            body.Append(Spacer());
-
-            // Notes
-            body.Append(SectionHeader("Notes"));
-            body.Append(Spacer());
-body.Append(SectionHeader("How to Improve (Non-Optimal Areas)"));
-body.Append(ParagraphOf(improvementParagraph));
-body.Append(Spacer());
-            body.Append(ParagraphOf("This report is generated from the provided inputs and scoring algorithms implemented in ReportAPI."));
-
-            mainPart.Document.Save();
+            doc.MainDocumentPart.Document.Save();
         }
 
         return ms.ToArray();
     }
 
-    private static string FormatZ(object? zDetail)
+    // --------------------------------------------------
+    // Helpers
+    // --------------------------------------------------
+
+    private static bool IsScoresTable(Table table)
     {
-        if (zDetail is null) return "N/A";
+        var firstRow = table.Descendants<TableRow>().FirstOrDefault();
+        if (firstRow == null) return false;
 
-        // Both HealthAge.ZDetail and PerformanceAge.ZDetail have:
-        // PercentOfAge, ContributionYears
-        // We'll use reflection to avoid duplicating formatters.
-        var t = zDetail.GetType();
-        var pctProp = t.GetProperty("PercentOfAge");
-        var yrsProp = t.GetProperty("ContributionYears");
-        if (pctProp is null || yrsProp is null) return "N/A";
+        var headers = firstRow.Descendants<TableCell>().Select(c => Normalize(c.InnerText)).ToList();
 
-        var pct = (double)(pctProp.GetValue(zDetail) ?? 0.0);
-        var yrs = (double)(yrsProp.GetValue(zDetail) ?? 0.0);
-
-        return $"{pct:P1} ({yrs:F2} yrs)";
+        return headers.Count >= 3
+            && headers[0] == "score"
+            && headers[1] == "your value"
+            && headers[2] == "optimal range";
     }
 
-    private static Paragraph SectionHeader(string text)
-        => ParagraphOf(text, bold: true, fontSizeHalfPoints: 32);
-
-    private static Paragraph SubHeader(string text)
-        => ParagraphOf(text, bold: true, fontSizeHalfPoints: 28);
-
-    private static Paragraph Spacer()
-        => new Paragraph(new Run(new Break()));
-
-    private static Paragraph ParagraphOf(string text, bool bold = false, bool italic = false, int fontSizeHalfPoints = 24)
+    private static void ReplaceLabel(Body body, string label, string value)
     {
-        var runProps = new RunProperties();
-        if (bold) runProps.Append(new Bold());
-        if (italic) runProps.Append(new Italic());
-        runProps.Append(new FontSize { Val = fontSizeHalfPoints.ToString() });
-
-        var run = new Run(runProps, new Text(text) { Space = SpaceProcessingModeValues.Preserve });
-        return new Paragraph(run);
-    }
-
-    private static Table BuildTwoColumnTable(params (string label, string value)[] rows)
-    {
-        var table = new Table();
-
-        table.AppendChild(new TableProperties(
-            new TableBorders(
-                new TopBorder { Val = BorderValues.Single, Size = 6 },
-                new BottomBorder { Val = BorderValues.Single, Size = 6 },
-                new LeftBorder { Val = BorderValues.Single, Size = 6 },
-                new RightBorder { Val = BorderValues.Single, Size = 6 },
-                new InsideHorizontalBorder { Val = BorderValues.Single, Size = 6 },
-                new InsideVerticalBorder { Val = BorderValues.Single, Size = 6 }
-            )
-        ));
-
-        foreach (var (label, value) in rows)
+        foreach (var p in body.Descendants<Paragraph>())
         {
-            var tr = new TableRow();
-            tr.Append(Cell(label, bold: true), Cell(value));
-            table.Append(tr);
+            var text = string.Concat(p.Descendants<Text>().Select(t => t.Text));
+            if (!text.Contains(label)) continue;
+
+            var first = p.Descendants<Text>().First(t => t.Text.Contains(label));
+            first.Text = $"{label} {value}";
+
+            foreach (var extra in p.Descendants<Text>().Skip(1).ToList())
+                extra.Remove();
+
+            return;
         }
 
-        return table;
+        throw new InvalidOperationException($"Label '{label}' not found in template.");
     }
 
-    private static TableCell Cell(string text, bool bold = false)
+    private static void SetCell(TableCell cell, string value)
     {
-        var runProps = new RunProperties();
-        if (bold) runProps.Append(new Bold());
+        var texts = cell.Descendants<Text>().ToList();
 
-        var p = new Paragraph(new Run(runProps, new Text(text) { Space = SpaceProcessingModeValues.Preserve }));
-        return new TableCell(p);
+        if (!texts.Any())
+        {
+            cell.RemoveAllChildren<Paragraph>();
+            cell.AppendChild(
+                new Paragraph(
+                    new Run(
+                        new Text(value) { Space = SpaceProcessingModeValues.Preserve }
+                    )
+                )
+            );
+            return;
+        }
+
+        texts[0].Text = value;
+        foreach (var t in texts.Skip(1)) t.Remove();
     }
+
+    private static string Normalize(string s)
+        => (s ?? "").Trim().ToLowerInvariant();
+        private static string F(double? value, string format)
+    => value.HasValue ? value.Value.ToString(format) : "—";
+
+private static string P(double? value)
+    => value.HasValue ? value.Value.ToString("F0") : "—";
 }
