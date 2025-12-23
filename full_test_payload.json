@@ -49,18 +49,18 @@
     "perceivedStressScore": 16
   },
   "cardiology": {
-    "carotidPlaqueSeverity": "none",
-    "coronaryPlaqueSeverity": "mild",
-    "cacScore": 0,
-    "cacPercentile": null,
-    "ctaMaxStenosisPercent": 0,
-    "ctaOverallResult": "",
-    "treadmillOverallResult": "low",
-    "echoOverallResult": "low",
-    "hasClinicalAscVDHistory": false,
-    "clinicalAscVDHistoryDetails": "",
-    "hasFamilyHistoryPrematureAscVD": true,
-    "familyHistoryPrematureAscVDDetails": "Father MI at 52",
-    "specificCardiologyInstructions": "Prevention-focused guidance"
-  }
+  "carotidPlaqueSeverity": "none",
+  "coronaryPlaqueSeverity": "mild",
+  "cacScore": 0,
+  "cacPercentile": null,
+  "ctaMaxStenosisPercent": 0,
+  "ctaOverallResult": "moderate",
+  "treadmillOverallResult": "low",
+  "echoOverallResult": "low",
+  "hasClinicalAscVDHistory": false,
+  "clinicalAscVDHistoryDetails": "",
+  "hasFamilyHistoryPrematureAscVD": true,
+  "familyHistoryPrematureAscVDDetails": "Father MI at 52",
+  "specificCardiologyInstructions": "Prevention-focused guidance"
+}
 }

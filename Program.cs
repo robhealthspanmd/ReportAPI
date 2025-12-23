@@ -116,52 +116,46 @@ app.MapPost("/api/cardiology", (Cardiology.Inputs input) =>
 
 app.MapPost("/api/report.docx", async (ReportRequest req) =>
 {
-    // 1) Pheno
     var pheno = PhenoAge.Calculate(req.PhenoAge);
 
-    // 2) Health (reuse computed PhenoAge)
-    var healthInputs = req.HealthAge with
-    {
-        PhenotypicAgeYears = pheno.PhenotypicAgeYears
-    };
+    var healthInputs = req.HealthAge with { PhenotypicAgeYears = pheno.PhenotypicAgeYears };
     var health = HealthAge.Calculate(healthInputs);
 
-    // 3) Performance
     var performance = PerformanceAge.Calculate(req.PerformanceAge);
-
-    // 4) Brain
     var brain = BrainHealth.Calculate(req.BrainHealth);
 
-    // 5) Build a small summary object for GPT (NO raw labs required)
+    var cardio = req.Cardiology is null ? null : Cardiology.Calculate(req.Cardiology);
+
     var summaryForAi = new
     {
         chronologicalAgeYears = req.PhenoAge.ChronologicalAgeYears,
         phenotypicAgeYears = pheno.PhenotypicAgeYears,
         mortality10Yr = pheno.Mortality10Yr,
-
         healthAgeYears = health.HealthAgeFinal,
         healthDeltaYears = health.DeltaVsChronoYears,
-
         performanceAgeYears = performance.PerformanceAge,
         performanceDeltaYears = performance.DeltaVsAgeYears,
-
         brainScore = brain.TotalScore,
         brainLevel = brain.Level
     };
 
-    // 6) Call GPT for improvement paragraph
     var improvementParagraph = await AiInsights.GenerateImprovementParagraphAsync(summaryForAi);
 
-    // 7) Build the Word doc (now includes improvements)
-    var bytes = WordReportBuilder.BuildFullReport(req, pheno, health, performance, brain, improvementParagraph);
+    var cardiologyInterpretationParagraph =
+        cardio is null ? "" : await AiInsights.GenerateCardiologyInterpretationAsync(req, cardio);
+
+    var bytes = WordReportBuilder.BuildFullReport(
+        req, pheno, health, performance, brain,
+        improvementParagraph,
+        cardiologyInterpretationParagraph
+    );
 
     var filename = $"Healthspan_Report_{DateTime.UtcNow:yyyyMMdd_HHmmss}.docx";
-    return Results.File(
-        fileContents: bytes,
-        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        fileDownloadName: filename
-    );
+    return Results.File(bytes,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        filename);
 });
+
 
 
 

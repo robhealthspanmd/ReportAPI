@@ -13,7 +13,9 @@ public static class WordReportBuilder
         HealthAge.Result health,
         PerformanceAge.Result performance,
         BrainHealth.Result brain,
-        string improvementParagraph
+        string improvementParagraph,
+        string cardiologyInterpretationParagraph
+        
     )
     {
         var templatePath = Path.Combine(AppContext.BaseDirectory, "HealthspanAssessment.docx");
@@ -139,6 +141,8 @@ public static class WordReportBuilder
             // Inflammation (hs-CRP from PhenoAge input)
             ReplaceLabel(body, "Inflammation:",
                 CRP(request.PhenoAge.CRP_mg_L));
+            
+            InsertParagraphAfterHeading(body,"Heart and Blood Vessel Health Interpretation and Strategy",cardiologyInterpretationParagraph);
 
             doc.MainDocumentPart.Document.Save();
         }
@@ -233,4 +237,26 @@ public static class WordReportBuilder
         if (!crpMgL.HasValue) return "—";
         return $"{crpMgL.Value:F1} mg/L";
     }
+    private static void InsertParagraphAfterHeading(Body body, string headingText, string paragraphText)
+{
+    foreach (var p in body.Descendants<Paragraph>())
+    {
+        var text = string.Concat(p.Descendants<Text>().Select(t => t.Text));
+        if (!text.Contains(headingText)) continue;
+
+        p.InsertAfterSelf(
+            new Paragraph(
+                new Run(
+                    new Text(paragraphText ?? "")
+                    {
+                        Space = SpaceProcessingModeValues.Preserve
+                    }
+                )
+            )
+        );
+        return;
+    }
+
+    throw new InvalidOperationException($"Heading '{headingText}' not found in template.");
+}
 }

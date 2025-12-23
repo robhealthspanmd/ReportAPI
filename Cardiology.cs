@@ -3,31 +3,36 @@ using System;
 public static class Cardiology
 {
     public sealed record Inputs(
-        // Plaque
-        string? CarotidPlaqueSeverity,     // "none" | "mild" | "moderate" | "severe"
-        string? CoronaryPlaqueSeverity,    // "none" | "mild" | "moderate" | "severe"
+    // Plaque
+    string? CarotidPlaqueSeverity,     // "none" | "mild" | "moderate" | "severe"
+    string? CoronaryPlaqueSeverity,    // "none" | "mild" | "moderate" | "severe"
 
-        // Coronary imaging
-        double? CacScore,                  // numeric, allow null
-        double? CacPercentile,             // numeric 0-100, allow null
+    // Coronary imaging
+    double? CacScore,                 // numeric, allow null
+    double? CacPercentile,            // numeric 0-100, allow null
 
-        // CTA
-        double? CtaMaxStenosisPercent,     // numeric 0-100, allow null
-        string? CtaOverallResult,          // "low" | "moderate" | "high" | "severe" (only if no score)
+    // CTA
+    double? CtaMaxStenosisPercent,    // numeric 0-100, allow null
+    string? CtaOverallResult,         // "low" | "moderate" | "high" | "severe" (only if no score)
 
-        // Treadmill (overall only)
-        string? TreadmillOverallResult,    // "low" | "moderate" | "high" | "severe"
+    // Treadmill (overall only)
+    string? TreadmillOverallResult,   // "low" | "moderate" | "high" | "severe"
 
-        // Echo (overall only)
-        string? EchoOverallResult,         // "low" | "moderate" | "high" | "severe"
+    // Echo (overall only)
+    string? EchoOverallResult,        // "low" | "moderate" | "high" | "severe"
 
-        // Clinical history (optional but required by your algorithm)
-        bool? HasClinicalAscVDHistory,      // true => SEVERE
-        string? ClinicalAscVDHistoryDetails, // free text
+    // Clinical history
+    bool? HasClinicalAscVDHistory,        // true => SEVERE
+    string? ClinicalAscVDHistoryDetails,  // free text
 
-        // Free text
-        string? SpecificCardiologyInstructions
-    );
+    // Family history (NEW)
+    bool? HasFamilyHistoryPrematureAscVD,       // true/false/null
+    string? FamilyHistoryPrematureAscVDDetails, // free text
+
+    // Free text
+    string? SpecificCardiologyInstructions
+);
+
 
     public sealed record Result(
         string RiskCategory,               // "LOW" | "MILD" | "MODERATE" | "SEVERE"
