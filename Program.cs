@@ -103,6 +103,16 @@ app.MapPost("/api/brainhealth", (BrainHealth.Inputs input) =>
     });
 });
 
+app.MapPost("/api/cardiology", (Cardiology.Inputs input) =>
+{
+    var r = Cardiology.Calculate(input); // this is where your algorithm lives
+    return Results.Ok(new
+    {
+        modelVersion = "cardiology-risk-v1",
+        riskCategory = r.RiskCategory
+    });
+});
+
 
 app.MapPost("/api/report.docx", async (ReportRequest req) =>
 {

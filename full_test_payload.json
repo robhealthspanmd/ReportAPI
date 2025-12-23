@@ -4,7 +4,7 @@
     "albumin_g_dL": 4.3,
     "creatinine_mg_dL": 1.0,
     "glucose_mg_dL": 92,
-    "crp_mg_L": 1.2,
+    "CRP_mg_L": 1.2,
     "lymphocytePercent": 28,
     "mcv_fL": 90,
     "rdw_percent": 13.2,
@@ -21,7 +21,7 @@
     "nonHdlMgDl": 250,
     "nonHdlRiskGroup": "Low",
     "fastingInsulin_uIU_mL": 5,
-    "fastingGlucose_mg_dL": 80, 
+    "fastingGlucose_mg_dL": 80,
     "triglycerides_mg_dL": 50,
     "hdl_mg_dL": 100,
     "fib4Score": 0.7
@@ -47,5 +47,20 @@
     "flourishingScale": 48,
     "promisSleepDisturbance": 58,
     "perceivedStressScore": 16
+  },
+  "cardiology": {
+    "carotidPlaqueSeverity": "none",
+    "coronaryPlaqueSeverity": "mild",
+    "cacScore": 0,
+    "cacPercentile": null,
+    "ctaMaxStenosisPercent": 0,
+    "ctaOverallResult": "",
+    "treadmillOverallResult": "low",
+    "echoOverallResult": "low",
+    "hasClinicalAscVDHistory": false,
+    "clinicalAscVDHistoryDetails": "",
+    "hasFamilyHistoryPrematureAscVD": true,
+    "familyHistoryPrematureAscVDDetails": "Father MI at 52",
+    "specificCardiologyInstructions": "Prevention-focused guidance"
   }
 }

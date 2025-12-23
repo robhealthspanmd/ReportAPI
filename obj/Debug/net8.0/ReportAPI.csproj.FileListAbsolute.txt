@@ -1,4 +1,3 @@
-C:\Users\rober\ReportAPI\ReportAPI\bin\Debug\net8.0\sample-request.json
 C:\Users\rober\ReportAPI\ReportAPI\bin\Debug\net8.0\appsettings.Development.json
 C:\Users\rober\ReportAPI\ReportAPI\bin\Debug\net8.0\appsettings.json
 C:\Users\rober\ReportAPI\ReportAPI\bin\Debug\net8.0\HealthspanAssessment.docx
@@ -31,3 +30,4 @@ C:\Users\rober\ReportAPI\ReportAPI\obj\Debug\net8.0\refint\ReportAPI.dll
 C:\Users\rober\ReportAPI\ReportAPI\obj\Debug\net8.0\ReportAPI.pdb
 C:\Users\rober\ReportAPI\ReportAPI\obj\Debug\net8.0\ReportAPI.genruntimeconfig.cache
 C:\Users\rober\ReportAPI\ReportAPI\obj\Debug\net8.0\ref\ReportAPI.dll
+C:\Users\rober\ReportAPI\ReportAPI\bin\Debug\net8.0\full_test_payload.json
