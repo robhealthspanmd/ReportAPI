@@ -28,7 +28,21 @@ public static class HealthAge
         double? Hdl_mg_dL,                       // C21
 
         // Z8 FIB-4 score
-        double? Fib4Score                        // B22
+        double? Fib4Score  ,
+        double? BodyFatPercentage,
+double? TotalFatMass,
+double? TotalFatMassPerHeight,
+double? VisceralFatMass,
+double? TotalLeanMass,
+double? TotalLeanMassPerHeight,
+double? TotalCholesterol,
+double? TriglyceridesHdlRatio,
+double? Ast,
+double? Alt,
+double? Platelets,
+double? HomaIr,
+double? HemoglobinA1c
+                      // B22
     );
 
     public sealed record ZDetail(double PercentOfAge, double ContributionYears);
