@@ -1,281 +1,119 @@
 {
-  "request": {
-    "PhenoAge": {
-      "ChronologicalAgeYears": 34,
-      "Albumin_g_dL": 4.6,
-      "Creatinine_mg_dL": 0.95,
-      "Glucose_mg_dL": 92,
-      "CRP_mg_L": 0.7,
-      "LymphocytePercent": 31,
-      "MCV_fL": 90,
-      "RDW_percent": 12.8,
-      "AlkalinePhosphatase_U_L": 70,
-      "WBC_10e3_per_uL": 5.6
-    },
-    "HealthAge": {
-      "ChronologicalAgeYears": 34,
-      "PhenotypicAgeYears": 34,
-      "Sex": "Male",
-      "BodyFatPercentile": 62,
-      "VisceralFatPercentile": 55,
-      "AppendicularMusclePercentile": 70,
-      "SystolicBP": 124,
-      "DiastolicBP": 78,
-      "NonHdlMgDl": 138,
-      "NonHdlRiskGroup": "Moderate",
-      "FastingInsulin_uIU_mL": 9.2,
-      "FastingGlucose_mg_dL": 92,
-      "Triglycerides_mg_dL": 140,
-      "Hdl_mg_dL": 48,
-      "Fib4Score": 0.85,
-      "BodyFatPercentage": 20.5,
-      "TotalFatMass": 19.6,
-      "TotalFatMassPerHeight": 6.2,
-      "VisceralFatMass": 850,
-      "TotalLeanMass": 74,
-      "TotalLeanMassPerHeight": 23.4,
-      "TotalCholesterol": 198,
-      "TriglyceridesHdlRatio": 2.9,
-      "Ast": 22,
-      "Alt": 28,
-      "Platelets": 240,
-      "HomaIr": 2.1,
-      "HemoglobinA1c": 5.4
-    },
-    "PerformanceAge": {
-      "ChronologicalAgeYears": 34,
-      "Vo2MaxPercentile": 58,
-      "QuadricepsStrengthPercentile": 72,
-      "GripStrengthPercentile": 65,
-      "GaitSpeedComfortablePercentile": 55,
-      "GaitSpeedMaxPercentile": 60,
-      "PowerPercentile": 62,
-      "BalancePercentile": 50,
-      "ChairRisePercentile": 57
-    },
-    "BrainHealth": {
-      "CognitiveFunction": 72,
-      "PromisDepression_8a": 12,
-      "PromisAnxiety_8a": 16,
-      "BriefResilienceScale": 22,
-      "LifeOrientationTest_R": 15,
-      "MeaningInLifeQuestionnaire": 48,
-      "FlourishingScale": 44,
-      "PromisSleepDisturbance": 52,
-      "PerceivedStressScore": 14
-    },
-    "Cardiology": {
-      "CarotidPlaqueSeverity": "mild",
-      "CoronaryPlaqueSeverity": "none",
-      "CacScore": 0,
-      "CacPercentile": 10,
-      "CtaMaxStenosisPercent": null,
-      "CtaOverallResult": null,
-      "TreadmillOverallResult": "low",
-      "EchoOverallResult": "low",
-      "HasClinicalAscVDHistory": false,
-      "ClinicalAscVDHistoryDetails": null,
-      "HasFamilyHistoryPrematureAscVD": true,
-      "FamilyHistoryPrematureAscVDDetails": "Father MI at 52",
-      "SpecificCardiologyInstructions": "Emphasize prevention targets and lifestyle first; avoid medication discussion unless severe risk.",
-      "EcgDetails": "Normal sinus rhythm.",
-      "AbdominalAortaScreening": "Not performed.",
-      "CtaPlaqueQuantification": null,
-      "CtaSoftPlaque": null,
-      "CtaCalcifiedPlaque": null,
-      "HardSoftPlaqueRatio": null
-    },
-    "ClinicalData": {
-      "CancerScreeningRecommendations": "Colonoscopy at 45 unless family history indicates earlier; skin checks annually.",
-      "VaccinationRecommendations": "Influenza annually; COVID booster per schedule; Td/Tdap every 10 years.",
-      "ThyroidResults": "TSH normal, no action needed.",
-      "HormoneResults": "Total testosterone mid-range; consider repeat AM fasting if symptomatic.",
-      "Albuminuria": "Not detected.",
-      "Cbc": "Within normal limits.",
-      "BoneDensity": "Not performed.",
-      "VisionScreen": "Recommend annual eye exam.",
-      "HearingScreen": "No concerns reported.",
-      "DentalHygieneStatus": "Cleanings twice yearly."
-    },
-    "ToxinsLifestyle": {
-      "AlcoholIntake": "2-4 drinks/week.",
-      "Smoking": "Never smoker.",
-      "ChewingTobacco": "None.",
-      "Vaping": "None.",
-      "CannabisUse": "Occasional (monthly).",
-      "ScreenTime": "6-8 hours/day.",
-      "UltraProcessedFoodIntake": "Moderate; 2-3 servings/day."
-    }
+  "phenoAge": {
+    "chronologicalAgeYears": 34,
+    "albumin_g_dL": 4.6,
+    "creatinine_mg_dL": 0.95,
+    "glucose_mg_dL": 92,
+    "crp_mg_L": 0.7,
+    "lymphocytePercent": 31,
+    "mcv_fL": 90,
+    "rdw_percent": 12.8,
+    "alkalinePhosphatase_U_L": 70,
+    "wbc_10e3_per_uL": 5.6
   },
-  "results": {
-    "pheno": {
-      "Xb": -10.462281931523389,
-      "Mortality10Yr": 0.005623568847377025,
-      "PhenotypicAgeYears": 26.429462791437984
-    },
-    "health": {
-      "SumContributionYears": -6.459999999999999,
-      "HealthAgeUncapped": 19.969462791437984,
-      "ContributionYearsScaled": -1.9379999999999997,
-      "HealthAgeFinal": 24.491462791437986,
-      "DeltaVsChronoYears": -9.508537208562014,
-      "DeltaVsChronoPercent": -0.2796628590753534,
-      "Z1_BodyFat": {
-        "PercentOfAge": 0.03,
-        "ContributionYears": 1.02
-      },
-      "Z2_VisceralFat": {
-        "PercentOfAge": 0.07,
-        "ContributionYears": 2.3800000000000003
-      },
-      "Z3_AppendicularMuscle": {
-        "PercentOfAge": -0.06,
-        "ContributionYears": -2.04
-      },
-      "Z4_BloodPressure": {
-        "PercentOfAge": -0.15,
-        "ContributionYears": -5.1
-      },
-      "Z5_NonHdl": {
-        "PercentOfAge": 0,
-        "ContributionYears": 0
-      },
-      "Z6_HomaIr": {
-        "PercentOfAge": 0,
-        "ContributionYears": 0
-      },
-      "Z7_TgHdl": {
-        "PercentOfAge": 0,
-        "ContributionYears": 0
-      },
-      "Z8_Fib4": {
-        "PercentOfAge": -0.08,
-        "ContributionYears": -2.72
-      }
-    },
-    "performance": {
-      "SumContributionYears": -14.110000000000003,
-      "ContributionYearsScaled": -4.2330000000000005,
-      "PerformanceAge": 29.767,
-      "DeltaVsAgeYears": -4.2330000000000005,
-      "DeltaVsAgePercent": -0.12450000000000006,
-      "Z1_Vo2Max": {
-        "PercentOfAge": -0.05,
-        "ContributionYears": -1.7000000000000002
-      },
-      "Z2_Quadriceps": {
-        "PercentOfAge": -0.05,
-        "ContributionYears": -1.7000000000000002
-      },
-      "Z3_Grip": {
-        "PercentOfAge": -0.07,
-        "ContributionYears": -2.3800000000000003
-      },
-      "Z4_GaitComfortable": {
-        "PercentOfAge": -0.07,
-        "ContributionYears": -2.3800000000000003
-      },
-      "Z5_GaitMax": {
-        "PercentOfAge": -0.05,
-        "ContributionYears": -1.7000000000000002
-      },
-      "Z6_Power": {
-        "PercentOfAge": -0.05,
-        "ContributionYears": -1.7000000000000002
-      },
-      "Z7_Balance": {
-        "PercentOfAge": -0.025,
-        "ContributionYears": -0.8500000000000001
-      },
-      "Z8_ChairRise": {
-        "PercentOfAge": -0.05,
-        "ContributionYears": -1.7000000000000002
-      }
-    },
-    "brain": {
-      "CognitivePoints": 21.599999999999998,
-      "DepressionPoints": 8.75,
-      "AnxietyPoints": 5.625,
-      "ResiliencePoints": 4.999999999999999,
-      "OptimismPoints": 4.6875,
-      "MeaningPoints": 4.749999999999999,
-      "FlourishingPoints": 7.5,
-      "SleepPoints": 10,
-      "StressPoints": 7,
-      "TotalScore": 74.9125,
-      "Level": "Healthy"
-    }
+  "healthAge": {
+    "chronologicalAgeYears": 34,
+    "phenotypicAgeYears": 34,
+    "sex": "Male",
+    "bodyFatPercentile": 62,
+    "visceralFatPercentile": 55,
+    "appendicularMusclePercentile": 70,
+    "systolicBP": 124,
+    "diastolicBP": 78,
+    "nonHdlMgDl": 138,
+    "nonHdlRiskGroup": "Moderate",
+    "fastingInsulin_uIU_mL": 9.2,
+    "fastingGlucose_mg_dL": 92,
+    "triglycerides_mg_dL": 140,
+    "hdl_mg_dL": 48,
+    "fib4Score": 0.85,
+    "bodyFatPercentage": 20.5,
+    "totalFatMass": 19.6,
+    "totalFatMassPerHeight": 6.2,
+    "visceralFatMass": 850,
+    "totalLeanMass": 74.0,
+    "totalLeanMassPerHeight": 23.4,
+    "totalCholesterol": 198,
+    "triglyceridesHdlRatio": 2.9,
+    "ast": 22,
+    "alt": 28,
+    "platelets": 240,
+    "homaIr": 2.1,
+    "hemoglobinA1c": 5.4
   },
-  "metabolicAi": {
-    "MetabolicHealthCategory": "Metabolic Dysfunction",
-    "DerivedMetrics": {
-      "TgHdlRatio": 2.9166666667,
-      "HomaIr": 2.0898765432,
-      "Fib4": 0.6178796762
-    },
-    "Grades": {
-      "A1c": "Mild",
-      "FastingInsulin": "Mild",
-      "TgHdlRatio": "Moderate",
-      "HomaIr": "Moderate",
-      "VisceralFatPercentile": "Moderate",
-      "LeanToFatMassRatio": "Optimal",
-      "Fib4": "Optimal"
-    },
-    "Counts": {
-      "MildCount": 2,
-      "ModerateCount": 3,
-      "SevereCount": 0,
-      "NonOptimalCount": 5
-    },
-    "Flags": {
-      "IsolatedA1cElevation": false,
-      "IsolatedInsulinResistanceMarker": false
-    },
-    "BiggestContributors": [
-      {
-        "MetricName": "tgHdlRatio",
-        "Severity": "Moderate",
-        "MechanismLabel": "Atherogenic dyslipidemia / insulin resistance signal"
-      },
-      {
-        "MetricName": "homaIr",
-        "Severity": "Moderate",
-        "MechanismLabel": "Insulin resistance"
-      },
-      {
-        "MetricName": "visceralFatPercentile",
-        "Severity": "Moderate",
-        "MechanismLabel": "Visceral adiposity driving cardiometabolic risk"
-      }
-    ],
-    "TopInterventions": [
-      {
-        "Bucket": "NutritionOptimization",
-        "RecommendationText": "Reduce refined carbs/sugary drinks; prioritize high-fiber whole foods and protein; consider modest calorie deficit if aiming to reduce visceral fat.",
-        "Priority": 1
-      },
-      {
-        "Bucket": "Fitness",
-        "RecommendationText": "Accumulate 150\u2013300 min/wk aerobic activity plus 2\u20133 days/wk resistance training; add 1\u20132 short interval sessions if tolerated.",
-        "Priority": 2
-      },
-      {
-        "Bucket": "SleepOptimization",
-        "RecommendationText": "Target 7\u20139 hours nightly with consistent schedule; reduce late caffeine/alcohol to support insulin sensitivity.",
-        "Priority": 3
-      }
-    ],
-    "OptionalProgramsOffered": [
-      "CGM"
-    ],
-    "Notes": [
-      "EXTRACTED_FIELDS_JSON.a1cPercent is null; used INPUT_JSON.A1c value for A1c grading."
-    ]
+  "performanceAge": {
+    "chronologicalAgeYears": 34,
+
+    "vo2MaxPercentile": 58,
+    "quadricepsStrengthPercentile": 72,
+    "gripStrengthPercentile": 65,
+    "gaitSpeedComfortablePercentile": 55,
+    "gaitSpeedMaxPercentile": 60,
+    "powerPercentile": 62,
+    "balancePercentile": 50,
+    "chairRisePercentile": 57,
+
+    "vo2Max": 41.5,
+    "heartRateRecovery": 17,
+    "floorToStandTest": "6/10",
+    "trunkEndurance": "below average endurance",
+    "postureAssessment": "Tragus-to-wall ~13 cm",
+    "hipStrength": "mild weakness on single-leg stance",
+    "calfStrength": "normal",
+    "rotatorCuffIntegrity": "no pain, full ROM",
+    "isometricThighPull": 185
   },
-  "aiText": {
-    "improvementParagraph": "Your health assessment shows a phenotypic age significantly lower than your chronological age, indicating a favorable biological profile. However, your performance age is approximately 30 years, which is about 4 years less optimal compared to your health age. This suggests that while your general health markers are strong, aspects of physical performance or fitness may require attention to fully optimize your functional capacity.\n\nTo improve your performance age, focus on structured physical activity that includes a combination of cardiovascular training, strength conditioning, and flexibility exercises. Aim for at least 150 minutes of moderate-intensity aerobic exercise weekly, combined with two days of resistance training targeting major muscle groups. Incorporate high-intensity interval training (HIIT) sessions to enhance cardiovascular capacity and metabolic efficiency. Additionally, ensure adequate recovery including proper sleep hygiene and nutritional optimization, emphasizing protein intake for muscle repair and anti-inflammatory foods to support recovery.\n\nYour brain score and level indicate a healthy cognitive status, so maintenance through continued mental stimulation and stress management is recommended. Regular aerobic exercise also supports neuroplasticity and cognitive function. Monitoring these parameters and reassessing fitness levels in the coming months can help track improvements and fine-tune interventions.",
-    "cardiologyInterpretationParagraph": "Your cardiovascular testing is reassuring in several important ways and shows several areas to optimize. **Optimal findings** include: no coronary plaque on imaging (coronary plaque severity \u201Cnone\u201D) with a **CAC score of 0** (10th percentile), a **low-risk treadmill** and **low-risk echocardiogram**, and a **normal ECG** (normal sinus rhythm). Your **inflammation marker (hs-CRP 0.7 mg/L)** is also in an optimal range. **Not optimal** is the presence of **mild carotid plaque**, which is an early sign of atherosclerosis even when the coronary calcium score is zero. In addition, your blood pressure is close to ideal but not at the \u201Cbest\u201D range (**124/78**), and your lipid pattern is acceptable but not optimal for someone with plaque and a strong family history (father MI at 52): **non-HDL 138 mg/dL** (flagged \u201CModerate\u201D), **triglycerides 140 mg/dL**, and **HDL 48 mg/dL**.\n\nBecause your overall cardiology risk category is **MILD** (driven by mild carotid plaque, not by symptoms or a prior event), the priority is **prevention and stopping progression** through lifestyle-first strategies. The goal is to keep your currently normal heart testing \u201Cclean\u201D over time while working to reduce the likelihood that early plaque progresses.\n\n**Targets (appropriate to mild early atherosclerosis):** Blood pressure goal is **\u003C130/80** (with preference toward the low\u2011120s systolic if achievable without side effects such as lightheadedness). Inflammation goal is **hs\u2011CRP \u003C1.0 mg/L**, which you are already meeting at **0.7 mg/L**. For atherosclerosis prevention with documented plaque, a common lipid goal is to drive atherogenic cholesterol lower\u2014often aiming for **LDL/apoB equivalent to an LDL target around \u003C70 mg/dL** (or comparably low non\u2011HDL), recognizing that your report provides **non\u2011HDL 138 mg/dL**, which leaves room for meaningful improvement. Triglycerides are ideally **\u003C100 mg/dL** (and at least \u003C150), and HDL is best interpreted in context of lowering non\u2011HDL/apoB and triglycerides rather than chasing HDL directly.\n\n**Strategy (lifestyle first, per clinician instruction):** Focus on a nutrition pattern that lowers non\u2011HDL cholesterol and triglycerides simultaneously\u2014minimizing ultra\u2011processed foods and refined starches/sugars (you report moderate intake at 2\u20133 servings/day), emphasizing high-fiber carbohydrates (vegetables, legumes, whole grains as tolerated), replacing saturated fats with unsaturated fats (olive oil, nuts, seeds, avocado, fatty fish), and ensuring adequate protein while keeping overall caloric balance aligned with waist/visceral fat reduction. Your body fat (20.5%) and visceral fat percentile (55) suggest that a modest reduction in visceral adiposity could further improve triglycerides, insulin resistance (HOMA\u2011IR 2.1), and blood pressure.\n\nYour fitness profile is a strength and a lever: VO\u2082max percentile **58** and strength measures above average support favorable long-term risk. To further protect the arteries, maintain consistent aerobic training (including some moderate-to-vigorous intensity as tolerated) plus resistance training, and prioritize sleep and stress management since these influence blood pressure and metabolic markers. Alcohol intake (2\u20134 drinks/week) is modest; keeping it moderate and avoiding \u201Cstacking\u201D drinks can help triglycerides and blood pressure. Avoid tobacco/nicotine entirely, which you already do.\n\nOverall, you have **no evidence of coronary artery disease** on current testing and low-risk functional and structural cardiac studies, which is excellent. The key actionable finding is **mild carotid plaque** plus family history\u2014an early warning that your arteries benefit from tighter prevention targets now, primarily through sustained lifestyle measures aimed at lowering atherogenic lipoproteins, maintaining excellent cardiorespiratory fitness, and keeping blood pressure and inflammation in the optimal range."
+  "brainHealth": {
+    "cognitiveFunction": 72,
+    "promisDepression_8a": 12,
+    "promisAnxiety_8a": 16,
+    "briefResilienceScale": 22,
+    "lifeOrientationTest_R": 15,
+    "meaningInLifeQuestionnaire": 48,
+    "flourishingScale": 44,
+    "promisSleepDisturbance": 52,
+    "perceivedStressScore": 14
+  },
+  "cardiology": {
+    "carotidPlaqueSeverity": "mild",
+    "coronaryPlaqueSeverity": "none",
+    "cacScore": 0,
+    "cacPercentile": 10,
+    "ctaMaxStenosisPercent": null,
+    "ctaOverallResult": null,
+    "treadmillOverallResult": "low",
+    "echoOverallResult": "low",
+    "hasClinicalAscVDHistory": false,
+    "clinicalAscVDHistoryDetails": null,
+    "hasFamilyHistoryPrematureAscVD": true,
+    "familyHistoryPrematureAscVDDetails": "Father MI at 52",
+    "specificCardiologyInstructions": "Emphasize prevention targets and lifestyle first; avoid medication discussion unless severe risk.",
+    "ecgDetails": "Normal sinus rhythm.",
+    "abdominalAortaScreening": "Not performed.",
+    "ctaPlaqueQuantification": null,
+    "ctaSoftPlaque": null,
+    "ctaCalcifiedPlaque": null,
+    "hardSoftPlaqueRatio": null
+  },
+  "clinicalData": {
+    "cancerScreeningRecommendations": "Colonoscopy at 45 unless family history indicates earlier; skin checks annually.",
+    "vaccinationRecommendations": "Influenza annually; COVID booster per schedule; Td/Tdap every 10 years.",
+    "thyroidResults": "TSH normal, no action needed.",
+    "hormoneResults": "Total testosterone mid-range; consider repeat AM fasting if symptomatic.",
+    "albuminuria": "Not detected.",
+    "cbc": "Within normal limits.",
+    "boneDensity": "Not performed.",
+    "visionScreen": "Recommend annual eye exam.",
+    "hearingScreen": "No concerns reported.",
+    "dentalHygieneStatus": "Cleanings twice yearly."
+  },
+  "toxinsLifestyle": {
+    "alcoholIntake": "2-4 drinks/week.",
+    "smoking": "Never smoker.",
+    "chewingTobacco": "None.",
+    "vaping": "None.",
+    "cannabisUse": "Occasional (monthly).",
+    "screenTime": "6-8 hours/day.",
+    "ultraProcessedFoodIntake": "Moderate; 2-3 servings/day."
   }
 }
-

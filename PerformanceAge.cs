@@ -31,7 +31,19 @@ public static class PerformanceAge
         ZDetail? Z5_GaitMax,
         ZDetail? Z6_Power,
         ZDetail? Z7_Balance,
-        ZDetail? Z8_ChairRise
+        ZDetail? Z8_ChairRise,
+
+    // ---- Additional Performance Metrics (not yet used in the percentile-based calculation) ----
+    // Included so future scoring expansions can use them without changing the existing output fields above.
+    double? Vo2Max = null,                 // e.g., ml/kg/min
+    double? HeartRateRecovery = null,      // e.g., bpm drop
+    string? FloorToStandTest = null,
+    string? TrunkEndurance = null,
+    string? PostureAssessment = null,
+    string? HipStrength = null,
+    string? CalfStrength = null,
+    string? RotatorCuffIntegrity = null,
+    double? IsometricThighPull = null
     );
 
     public static Result Calculate(Inputs x)

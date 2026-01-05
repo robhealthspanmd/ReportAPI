@@ -18,7 +18,8 @@ public static class JsonReportBuilder
         string improvementParagraph,
         string cardiologyInterpretationParagraph,
         AiInsights.MetabolicHealthAiResult? metabolicAi,
-        object? metabolicAiInput = null
+        object? metabolicAiInput = null,
+        PhysicalPerformanceStrategyEngine.Response? physicalPerformanceStrategyEngine = null
     )
     {
         // Keep output stable + frontend-friendly.
@@ -28,12 +29,13 @@ public static class JsonReportBuilder
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         };
 
+        // "Base report section" recreated below with the new computed field included.
         var payload = new
         {
             meta = new
             {
                 generatedAtUtc = DateTime.UtcNow,
-                schemaVersion = "report-json-v1"
+                schemaVersion = "report-json-v2"
             },
 
             inputs = new
@@ -52,6 +54,7 @@ public static class JsonReportBuilder
                 phenoAge = pheno,
                 healthAge = health,
                 performanceAge = performance,
+                physicalPerformanceStrategyEngine = physicalPerformanceStrategyEngine,
                 brainHealth = brain,
                 cardiology = cardio
             },

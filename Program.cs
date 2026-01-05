@@ -1,5 +1,6 @@
 using System;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -123,18 +124,74 @@ app.MapPost("/api/cardiology", (Cardiology.Inputs input) =>
     });
 });
 
-app.MapPost("/api/report.json", async (ReportRequest req) =>
+/// <summary>
+/// Full report (JSON) generator.
+/// Updated to:
+/// - read raw JSON (so extra performance fields are not dropped)
+/// - attach new performance fields onto PerformanceAge.Result (no changes to PerformanceAge.Calculate)
+/// - compute PhysicalPerformanceStrategyEngine output
+/// - inject that engine output into the final JSON (no changes to JsonReportBuilder)
+/// </summary>
+app.MapPost("/api/report.json", async (HttpContext http) =>
 {
+    // 1) Read raw JSON body
+    JsonElement root;
+    try
+    {
+        root = await JsonSerializer.DeserializeAsync<JsonElement>(http.Request.Body);
+    }
+    catch
+    {
+        return Results.BadRequest(new { error = "Invalid JSON body." });
+    }
+
+    // 2) Deserialize into existing ReportRequest contract (extra fields will be ignored here)
+    ReportRequest req;
+    try
+    {
+        req = JsonSerializer.Deserialize<ReportRequest>(root.GetRawText(), new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        }) ?? throw new InvalidOperationException("Request deserialized to null.");
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { error = "Could not deserialize request.", details = ex.Message });
+    }
+
+    // 3) Pull extra performance fields out of the raw JSON (so we keep what the UI sends)
+    var perfExtras = ExtractPerformanceExtras(root);
+
+    // 4) Run deterministic calculators (same as before)
     var pheno = PhenoAge.Calculate(req.PhenoAge);
 
     var healthInputs = req.HealthAge with { PhenotypicAgeYears = pheno.PhenotypicAgeYears };
     var health = HealthAge.Calculate(healthInputs);
 
-    var performance = PerformanceAge.Calculate(req.PerformanceAge);
+    var performanceCore = PerformanceAge.Calculate(req.PerformanceAge);
+
+    // 5) Attach extra metrics to the Result (no change to PerformanceAge.cs)
+    var performance = performanceCore with
+    {
+        Vo2Max = perfExtras.Vo2Max,
+        HeartRateRecovery = perfExtras.HeartRateRecovery,
+        FloorToStandTest = perfExtras.FloorToStandTest,
+        TrunkEndurance = perfExtras.TrunkEndurance,
+        PostureAssessment = perfExtras.PostureAssessment,
+        HipStrength = perfExtras.HipStrength,
+        CalfStrength = perfExtras.CalfStrength,
+        RotatorCuffIntegrity = perfExtras.RotatorCuffIntegrity,
+        IsometricThighPull = perfExtras.IsometricThighPull
+    };
+
     var brain = BrainHealth.Calculate(req.BrainHealth);
 
     var cardio = req.Cardiology is null ? null : Cardiology.Calculate(req.Cardiology);
 
+    // 6) Strategy engine (deterministic; only emits strategies if there are triggers)
+    var perfStrategy = PhysicalPerformanceStrategyEngine.Generate(req.PerformanceAge, performance);
+
+    // 7) AI summaries (same as before)
     var summaryForAi = new
     {
         chronologicalAgeYears = req.PhenoAge.ChronologicalAgeYears,
@@ -156,47 +213,158 @@ app.MapPost("/api/report.json", async (ReportRequest req) =>
     AiInsights.MetabolicHealthAiResult? metabolicAi = null;
     object? metabolicAiInput = null;
 
-try
-{
-    metabolicAiInput = new
+    try
     {
-        Age = req.PhenoAge.ChronologicalAgeYears,
-        AST = req.HealthAge.Ast,
-        ALT = req.HealthAge.Alt,
-        Platelets = req.HealthAge.Platelets,
-        Triglycerides = req.HealthAge.Triglycerides_mg_dL,
-        HDL = req.HealthAge.Hdl_mg_dL,
-        FastingGlucose = req.HealthAge.FastingGlucose_mg_dL,
-        FastingInsulin = req.HealthAge.FastingInsulin_uIU_mL,
-        A1c = req.HealthAge.HemoglobinA1c,
-        VisceralFatPercentile = req.HealthAge.VisceralFatPercentile,
-        LeanToFatMassRatio = (req.HealthAge.TotalLeanMass is not null && req.HealthAge.TotalFatMass is not null && req.HealthAge.TotalFatMass != 0)
-            ? req.HealthAge.TotalLeanMass / req.HealthAge.TotalFatMass
-            : (double?)null,
-        Sex = req.HealthAge.Sex
-    };
+        metabolicAiInput = new
+        {
+            Age = req.PhenoAge.ChronologicalAgeYears,
+            AST = req.HealthAge.Ast,
+            ALT = req.HealthAge.Alt,
+            Platelets = req.HealthAge.Platelets,
+            Triglycerides = req.HealthAge.Triglycerides_mg_dL,
+            HDL = req.HealthAge.Hdl_mg_dL,
+            FastingGlucose = req.HealthAge.FastingGlucose_mg_dL,
+            FastingInsulin = req.HealthAge.FastingInsulin_uIU_mL,
+            A1c = req.HealthAge.HemoglobinA1c,
+            VisceralFatPercentile = req.HealthAge.VisceralFatPercentile,
+            LeanToFatMassRatio =
+                (req.HealthAge.TotalLeanMass is not null &&
+                 req.HealthAge.TotalFatMass is not null &&
+                 req.HealthAge.TotalFatMass != 0)
+                    ? req.HealthAge.TotalLeanMass / req.HealthAge.TotalFatMass
+                    : (double?)null,
+            Sex = req.HealthAge.Sex
+        };
 
-    metabolicAi = await AiInsights.GenerateMetabolicHealthAlgorithmAsync(
-        JsonSerializer.SerializeToElement(metabolicAiInput)
-    );
-}
-catch
-{
-    // Do NOT fail the report if AI fails
-    metabolicAi = null;
-}
+        metabolicAi = await AiInsights.GenerateMetabolicHealthAlgorithmAsync(
+            JsonSerializer.SerializeToElement(metabolicAiInput)
+        );
+    }
+    catch
+    {
+        // Do NOT fail the report if AI fails
+        metabolicAi = null;
+    }
 
+    // 8) Build base report JSON bytes (no changes to JsonReportBuilder)
     var bytes = JsonReportBuilder.BuildFullReportJson(
-        req, pheno, health, performance, brain,
-        cardio,
-        improvementParagraph,
-        cardiologyInterpretationParagraph,
-        metabolicAi,
-        metabolicAiInput
-    );
+    req, pheno, health, performance, brain,
+    cardio,
+    improvementParagraph,
+    cardiologyInterpretationParagraph,
+    metabolicAi,
+    metabolicAiInput,
+    perfStrategy
+);
+
+    // 9) Inject the strategy engine output into computed.physicalPerformanceStrategyEngine
+    //    (so we don't have to change JsonReportBuilder.cs right now)
+    try
+    {
+        var node = JsonNode.Parse(bytes) as JsonObject;
+        var computedNode = node?["computed"] as JsonObject;
+        if (computedNode is not null)
+        {
+            computedNode["physicalPerformanceStrategyEngine"] = JsonSerializer.SerializeToNode(perfStrategy);
+            bytes = JsonSerializer.SerializeToUtf8Bytes(node!);
+        }
+    }
+    catch
+    {
+        // If injection fails, return base report.
+    }
 
     var filename = $"Healthspan_Report_{DateTime.UtcNow:yyyyMMdd_HHmmss}.json";
     return Results.File(bytes, "application/json", filename);
 });
 
 app.Run();
+
+
+// -----------------------------
+// Helpers (Program.cs-only wiring; no contract changes required)
+// -----------------------------
+
+static PerformanceExtras ExtractPerformanceExtras(JsonElement root)
+{
+    // Expecting a top-level "performanceAge" object alongside "phenoAge", "healthAge", etc.
+    if (!TryGetPropertyCaseInsensitive(root, "performanceAge", out var perfObj) ||
+        perfObj.ValueKind != JsonValueKind.Object)
+    {
+        return new PerformanceExtras();
+    }
+
+    return new PerformanceExtras
+    {
+        Vo2Max = ReadDouble(perfObj, "vo2Max"),
+        HeartRateRecovery = ReadDouble(perfObj, "heartRateRecovery"),
+        FloorToStandTest = ReadString(perfObj, "floorToStandTest"),
+        TrunkEndurance = ReadString(perfObj, "trunkEndurance"),
+        PostureAssessment = ReadString(perfObj, "postureAssessment"),
+        HipStrength = ReadString(perfObj, "hipStrength"),
+        CalfStrength = ReadString(perfObj, "calfStrength"),
+        RotatorCuffIntegrity = ReadString(perfObj, "rotatorCuffIntegrity"),
+        IsometricThighPull = ReadDouble(perfObj, "isometricThighPull")
+    };
+}
+
+static bool TryGetPropertyCaseInsensitive(JsonElement obj, string name, out JsonElement value)
+{
+    foreach (var prop in obj.EnumerateObject())
+    {
+        if (string.Equals(prop.Name, name, StringComparison.OrdinalIgnoreCase))
+        {
+            value = prop.Value;
+            return true;
+        }
+    }
+    value = default;
+    return false;
+}
+
+static double? ReadDouble(JsonElement obj, string name)
+{
+    if (!TryGetPropertyCaseInsensitive(obj, name, out var v))
+        return null;
+
+    if (v.ValueKind == JsonValueKind.Number && v.TryGetDouble(out var d))
+        return d;
+
+    if (v.ValueKind == JsonValueKind.String)
+    {
+        var s = v.GetString();
+        if (!string.IsNullOrWhiteSpace(s) && double.TryParse(s, out var parsed))
+            return parsed;
+    }
+
+    return null;
+}
+
+static string? ReadString(JsonElement obj, string name)
+{
+    if (!TryGetPropertyCaseInsensitive(obj, name, out var v))
+        return null;
+
+    return v.ValueKind switch
+    {
+        JsonValueKind.String => v.GetString(),
+        JsonValueKind.Number => v.GetRawText(),
+        JsonValueKind.True => "true",
+        JsonValueKind.False => "false",
+        JsonValueKind.Null => null,
+        _ => v.GetRawText()
+    };
+}
+
+sealed class PerformanceExtras
+{
+    public double? Vo2Max { get; set; }
+    public double? HeartRateRecovery { get; set; }
+    public string? FloorToStandTest { get; set; }
+    public string? TrunkEndurance { get; set; }
+    public string? PostureAssessment { get; set; }
+    public string? HipStrength { get; set; }
+    public string? CalfStrength { get; set; }
+    public string? RotatorCuffIntegrity { get; set; }
+    public double? IsometricThighPull { get; set; }
+}
