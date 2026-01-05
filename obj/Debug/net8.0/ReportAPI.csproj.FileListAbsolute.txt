@@ -1,15 +1,10 @@
 C:\Users\rober\ReportAPI\ReportAPI\bin\Debug\net8.0\appsettings.Development.json
 C:\Users\rober\ReportAPI\ReportAPI\bin\Debug\net8.0\appsettings.json
-C:\Users\rober\ReportAPI\ReportAPI\bin\Debug\net8.0\HealthspanAssessment.docx
 C:\Users\rober\ReportAPI\ReportAPI\bin\Debug\net8.0\ReportAPI.exe
 C:\Users\rober\ReportAPI\ReportAPI\bin\Debug\net8.0\ReportAPI.deps.json
 C:\Users\rober\ReportAPI\ReportAPI\bin\Debug\net8.0\ReportAPI.runtimeconfig.json
 C:\Users\rober\ReportAPI\ReportAPI\bin\Debug\net8.0\ReportAPI.dll
 C:\Users\rober\ReportAPI\ReportAPI\bin\Debug\net8.0\ReportAPI.pdb
-C:\Users\rober\ReportAPI\ReportAPI\bin\Debug\net8.0\DocumentFormat.OpenXml.dll
-C:\Users\rober\ReportAPI\ReportAPI\bin\Debug\net8.0\DocumentFormat.OpenXml.Framework.dll
-C:\Users\rober\ReportAPI\ReportAPI\bin\Debug\net8.0\System.IO.Packaging.dll
-C:\Users\rober\ReportAPI\ReportAPI\obj\Debug\net8.0\ReportAPI.csproj.AssemblyReference.cache
 C:\Users\rober\ReportAPI\ReportAPI\obj\Debug\net8.0\ReportAPI.GeneratedMSBuildEditorConfig.editorconfig
 C:\Users\rober\ReportAPI\ReportAPI\obj\Debug\net8.0\ReportAPI.AssemblyInfoInputs.cache
 C:\Users\rober\ReportAPI\ReportAPI\obj\Debug\net8.0\ReportAPI.AssemblyInfo.cs
@@ -24,10 +19,10 @@ C:\Users\rober\ReportAPI\ReportAPI\obj\Debug\net8.0\staticwebassets\msbuild.buil
 C:\Users\rober\ReportAPI\ReportAPI\obj\Debug\net8.0\staticwebassets\msbuild.buildTransitive.ReportAPI.props
 C:\Users\rober\ReportAPI\ReportAPI\obj\Debug\net8.0\staticwebassets.pack.json
 C:\Users\rober\ReportAPI\ReportAPI\obj\Debug\net8.0\scopedcss\bundle\ReportAPI.styles.css
-C:\Users\rober\ReportAPI\ReportAPI\obj\Debug\net8.0\ReportAPI.csproj.Up2Date
 C:\Users\rober\ReportAPI\ReportAPI\obj\Debug\net8.0\ReportAPI.dll
 C:\Users\rober\ReportAPI\ReportAPI\obj\Debug\net8.0\refint\ReportAPI.dll
 C:\Users\rober\ReportAPI\ReportAPI\obj\Debug\net8.0\ReportAPI.pdb
 C:\Users\rober\ReportAPI\ReportAPI\obj\Debug\net8.0\ReportAPI.genruntimeconfig.cache
 C:\Users\rober\ReportAPI\ReportAPI\obj\Debug\net8.0\ref\ReportAPI.dll
 C:\Users\rober\ReportAPI\ReportAPI\bin\Debug\net8.0\full_test_payload.json
+C:\Users\rober\ReportAPI\ReportAPI\bin\Debug\net8.0\output.json

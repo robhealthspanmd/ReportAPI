@@ -30,7 +30,16 @@ public static class Cardiology
     string? FamilyHistoryPrematureAscVDDetails, // free text
 
     // Free text
-    string? SpecificCardiologyInstructions
+    string? SpecificCardiologyInstructions,
+    string? EcgDetails,
+    string? AbdominalAortaScreening,
+    string? CtaPlaqueQuantification,
+string? CtaSoftPlaque,
+string? CtaCalcifiedPlaque,
+string? HardSoftPlaqueRatio
+
+
+
 );
 
 

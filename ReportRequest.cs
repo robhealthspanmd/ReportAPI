@@ -3,6 +3,7 @@ public sealed record ReportRequest(
     HealthAge.Inputs HealthAge,
     PerformanceAge.Inputs PerformanceAge,
     BrainHealth.Inputs BrainHealth,
-    Cardiology.Inputs Cardiology
-
+    Cardiology.Inputs? Cardiology,          // ✅ nullable matches Program.cs
+    ClinicalData.Inputs ClinicalData,       // ✅ new
+    ToxinsLifestyle.Inputs ToxinsLifestyle  // ✅ new
 );

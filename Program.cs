@@ -1,4 +1,6 @@
 using System;
+using System.Text.Json;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // CORS: MVP = open. Later lock to your Lovable domain.
@@ -17,6 +19,13 @@ app.UseCors("lovable");
 // Health check
 app.MapGet("/", () => Results.Ok(new { status = "ok", service = "ReportAPI" }));
 
+// --- NEW: Metabolic AI endpoint (raw JSON in, structured JSON out) ---
+app.MapPost("/api/metabolic-ai", async (JsonElement req) =>
+{
+    var result = await AiInsights.GenerateMetabolicHealthAlgorithmAsync(req);
+    return Results.Ok(result);
+});
+
 // PhenoAge endpoint
 app.MapPost("/api/phenoage", (PhenoAge.Inputs input) =>
 {
@@ -29,6 +38,7 @@ app.MapPost("/api/phenoage", (PhenoAge.Inputs input) =>
         phenotypicAgeYears = r.PhenotypicAgeYears
     });
 });
+
 app.MapPost("/api/healthage", (HealthAge.Inputs input) =>
 {
     var r = HealthAge.Calculate(input);
@@ -113,8 +123,7 @@ app.MapPost("/api/cardiology", (Cardiology.Inputs input) =>
     });
 });
 
-
-app.MapPost("/api/report.docx", async (ReportRequest req) =>
+app.MapPost("/api/report.json", async (ReportRequest req) =>
 {
     var pheno = PhenoAge.Calculate(req.PhenoAge);
 
@@ -144,19 +153,50 @@ app.MapPost("/api/report.docx", async (ReportRequest req) =>
     var cardiologyInterpretationParagraph =
         cardio is null ? "" : await AiInsights.GenerateCardiologyInterpretationAsync(req, cardio);
 
-    var bytes = WordReportBuilder.BuildFullReport(
+    AiInsights.MetabolicHealthAiResult? metabolicAi = null;
+    object? metabolicAiInput = null;
+
+try
+{
+    metabolicAiInput = new
+    {
+        Age = req.PhenoAge.ChronologicalAgeYears,
+        AST = req.HealthAge.Ast,
+        ALT = req.HealthAge.Alt,
+        Platelets = req.HealthAge.Platelets,
+        Triglycerides = req.HealthAge.Triglycerides_mg_dL,
+        HDL = req.HealthAge.Hdl_mg_dL,
+        FastingGlucose = req.HealthAge.FastingGlucose_mg_dL,
+        FastingInsulin = req.HealthAge.FastingInsulin_uIU_mL,
+        A1c = req.HealthAge.HemoglobinA1c,
+        VisceralFatPercentile = req.HealthAge.VisceralFatPercentile,
+        LeanToFatMassRatio = (req.HealthAge.TotalLeanMass is not null && req.HealthAge.TotalFatMass is not null && req.HealthAge.TotalFatMass != 0)
+            ? req.HealthAge.TotalLeanMass / req.HealthAge.TotalFatMass
+            : (double?)null,
+        Sex = req.HealthAge.Sex
+    };
+
+    metabolicAi = await AiInsights.GenerateMetabolicHealthAlgorithmAsync(
+        JsonSerializer.SerializeToElement(metabolicAiInput)
+    );
+}
+catch
+{
+    // Do NOT fail the report if AI fails
+    metabolicAi = null;
+}
+
+    var bytes = JsonReportBuilder.BuildFullReportJson(
         req, pheno, health, performance, brain,
+        cardio,
         improvementParagraph,
-        cardiologyInterpretationParagraph
+        cardiologyInterpretationParagraph,
+        metabolicAi,
+        metabolicAiInput
     );
 
-    var filename = $"Healthspan_Report_{DateTime.UtcNow:yyyyMMdd_HHmmss}.docx";
-    return Results.File(bytes,
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        filename);
+    var filename = $"Healthspan_Report_{DateTime.UtcNow:yyyyMMdd_HHmmss}.json";
+    return Results.File(bytes, "application/json", filename);
 });
-
-
-
 
 app.Run();

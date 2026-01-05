@@ -6,13 +6,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
-  </ItemGroup>
-<ItemGroup>
-  <None Include="HealthspanAssessment.docx">
-    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-  </None>
-</ItemGroup>
+  <!-- Word/OpenXML pipeline removed: report output is JSON -->
 
 </Project>
