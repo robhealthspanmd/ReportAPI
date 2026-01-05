@@ -181,7 +181,18 @@ app.MapPost("/api/report.json", async (HttpContext http) =>
         HipStrength = perfExtras.HipStrength,
         CalfStrength = perfExtras.CalfStrength,
         RotatorCuffIntegrity = perfExtras.RotatorCuffIntegrity,
-        IsometricThighPull = perfExtras.IsometricThighPull
+        IsometricThighPull = perfExtras.IsometricThighPull,
+
+        // Spec-expansion fields
+        MobilityRom = perfExtras.MobilityRom,
+        BalanceAssessment = perfExtras.BalanceAssessment,
+        ChairRiseFiveTimes = perfExtras.ChairRiseFiveTimes,
+        ChairRiseThirtySeconds = perfExtras.ChairRiseThirtySeconds,
+        QuadricepsAsymmetryPercent = perfExtras.QuadricepsAsymmetryPercent,
+        HipAsymmetryPercent = perfExtras.HipAsymmetryPercent,
+        CalfAsymmetryPercent = perfExtras.CalfAsymmetryPercent,
+        IsometricThighPullPercentile = perfExtras.IsometricThighPullPercentile,
+        RotatorCuffLowestMusclePercentile = perfExtras.RotatorCuffLowestMusclePercentile
     };
 
     var brain = BrainHealth.Calculate(req.BrainHealth);
@@ -304,7 +315,18 @@ static PerformanceExtras ExtractPerformanceExtras(JsonElement root)
         HipStrength = ReadString(perfObj, "hipStrength"),
         CalfStrength = ReadString(perfObj, "calfStrength"),
         RotatorCuffIntegrity = ReadString(perfObj, "rotatorCuffIntegrity"),
-        IsometricThighPull = ReadDouble(perfObj, "isometricThighPull")
+        IsometricThighPull = ReadDouble(perfObj, "isometricThighPull"),
+
+        // Spec-expansion fields (optional)
+        MobilityRom = ReadString(perfObj, "mobilityRom"),
+        BalanceAssessment = ReadString(perfObj, "balanceAssessment"),
+        ChairRiseFiveTimes = ReadString(perfObj, "chairRiseFiveTimes"),
+        ChairRiseThirtySeconds = ReadString(perfObj, "chairRiseThirtySeconds"),
+        QuadricepsAsymmetryPercent = ReadDouble(perfObj, "quadricepsAsymmetryPercent"),
+        HipAsymmetryPercent = ReadDouble(perfObj, "hipAsymmetryPercent"),
+        CalfAsymmetryPercent = ReadDouble(perfObj, "calfAsymmetryPercent"),
+        IsometricThighPullPercentile = ReadDouble(perfObj, "isometricThighPullPercentile"),
+        RotatorCuffLowestMusclePercentile = ReadDouble(perfObj, "rotatorCuffLowestMusclePercentile")
     };
 }
 
@@ -367,4 +389,14 @@ sealed class PerformanceExtras
     public string? CalfStrength { get; set; }
     public string? RotatorCuffIntegrity { get; set; }
     public double? IsometricThighPull { get; set; }
+
+    public string? MobilityRom { get; set; }
+    public string? BalanceAssessment { get; set; }
+    public string? ChairRiseFiveTimes { get; set; }
+    public string? ChairRiseThirtySeconds { get; set; }
+    public double? QuadricepsAsymmetryPercent { get; set; }
+    public double? HipAsymmetryPercent { get; set; }
+    public double? CalfAsymmetryPercent { get; set; }
+    public double? IsometricThighPullPercentile { get; set; }
+    public double? RotatorCuffLowestMusclePercentile { get; set; }
 }

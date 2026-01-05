@@ -33,45 +33,11 @@ public static class PhysicalPerformanceStrategyEngine
         AddVo2AndHrrFinding(findings, inputs, computed);
 
         // Stay Strong & Stable (percentile-driven)
-        AddPercentileFinding(findings,
-            domain: "Stay Strong & Stable",
-            metric: "Quadriceps Strength",
-            percentile: inputs.QuadricepsStrengthPercentile,
-            impactRank: 3,
-            leverageRank: 2,
-            why: "Lower quadriceps strength is linked to reduced stair-climbing capacity, slower gait, and greater fall risk.");
-
-        AddPercentileFinding(findings,
-            domain: "Stay Strong & Stable",
-            metric: "Grip Strength",
-            percentile: inputs.GripStrengthPercentile,
-            impactRank: 2,
-            leverageRank: 2,
-            why: "Grip strength correlates with overall strength and functional independence; deficits often track broader deconditioning.");
-
-        AddPercentileFinding(findings,
-            domain: "Stay Strong & Stable",
-            metric: "Power",
-            percentile: inputs.PowerPercentile,
-            impactRank: 2,
-            leverageRank: 2,
-            why: "Power supports rapid balance correction, rising from a chair, and athletic performance; low power can raise fall risk.");
-
-        AddPercentileFinding(findings,
-            domain: "Stay Strong & Stable",
-            metric: "Balance",
-            percentile: inputs.BalancePercentile,
-            impactRank: 3,
-            leverageRank: 2,
-            why: "Balance is a direct predictor of fall risk and functional confidence, especially under fatigue or sensory challenge.");
-
-        AddPercentileFinding(findings,
-            domain: "Stay Strong & Stable",
-            metric: "Chair Rise",
-            percentile: inputs.ChairRisePercentile,
-            impactRank: 3,
-            leverageRank: 2,
-            why: "Chair rise performance reflects lower-body strength and neuromuscular coordination; deficits often show up as mobility limitations.");
+        AddQuadricepsFinding(findings, inputs, computed);
+        AddGripFinding(findings, inputs);
+        AddPowerFinding(findings, inputs);
+        AddBalanceFinding(findings, inputs, computed);
+        AddChairRiseFinding(findings, inputs, computed);
 
         // Optional / future-facing metrics carried on computed.Result
         AddFloorToStandFinding(findings, computed);
@@ -80,17 +46,11 @@ public static class PhysicalPerformanceStrategyEngine
         AddTrunkEnduranceFinding(findings, computed);
 
         // Joint integrity / regional strength (currently qualitative strings)
-        AddQualitativeIssueFinding(findings, "Stay Strong & Stable", "Hip Strength", computed.HipStrength,
-            impactRank: 2, leverageRank: 2,
-            why: "Hip strength supports gait mechanics, pelvic stability, and knee/low-back loading; deficits can drive compensation patterns.");
+        AddHipStrengthFinding(findings, computed);
+        AddCalfStrengthFinding(findings, computed);
+        AddRotatorCuffFinding(findings, computed);
 
-        AddQualitativeIssueFinding(findings, "Stay Strong & Stable", "Calf Strength", computed.CalfStrength,
-            impactRank: 2, leverageRank: 1,
-            why: "Calf strength supports propulsion and balance corrections; deficits can reduce walking reserve and increase overuse risk.");
-
-        AddQualitativeIssueFinding(findings, "Stay Strong & Stable", "Rotator Cuff Integrity", computed.RotatorCuffIntegrity,
-            impactRank: 1, leverageRank: 1,
-            why: "Shoulder stability supports pain-free loading and overhead capacity; deficits can limit training options and daily tasks.");
+        AddImtpFinding(findings, computed);
 
         // Global strength (IMTP) — today we only have a raw number, so we treat it as informational unless
         // the qualitative field explicitly flags an issue. If you later add an IMTP percentile, plug it into
@@ -183,6 +143,492 @@ public static class PhysicalPerformanceStrategyEngine
     // ----------------------------
     // Findings builders
     // ----------------------------
+
+    // ---- Metric-specific builders matching the spec ----
+
+    private static void AddQuadricepsFinding(List<Finding> findings, PerformanceAge.Inputs inputs, PerformanceAge.Result computed)
+    {
+        // Trigger: <75th percentile OR asymmetry >10% OR <75% on 5x sit-to-stand OR below-optimal on 30s sit-to-stand
+        var p = inputs.QuadricepsStrengthPercentile;
+        var asym = computed.QuadricepsAsymmetryPercent;
+        var five = computed.ChairRiseFiveTimes;
+        var thirty = computed.ChairRiseThirtySeconds;
+
+        bool pctTrigger = p is not null && p.Value < 75;
+        bool asymTrigger = asym is not null && asym.Value > 10;
+        bool fiveTrigger = IsPercentBelow(five, 75) || ContainsFailFlag(five);
+        bool thirtyTrigger = ContainsFailFlag(thirty); // no norms provided; allow explicit flag from UI
+
+        bool isOptimalPct = p is not null && p.Value >= 75;
+        bool triggered = pctTrigger || asymTrigger || fiveTrigger || thirtyTrigger;
+
+        if (!triggered)
+        {
+            // Only reassurance if we have at least one assessed indicator.
+            if (p is null && asym is null && string.IsNullOrWhiteSpace(five) && string.IsNullOrWhiteSpace(thirty)) return;
+
+            var status = p is not null
+                ? $"Optimal (≥75th percentile; {p.Value:0.#}th)"
+                : "Optimal";
+
+            findings.Add(new Finding(
+                Domain: "Stay Strong & Stable",
+                Metric: "Quadriceps Strength",
+                TriggerFinding: status,
+                Why: "Lower-body strength is a primary driver of stair climbing, rising from a chair, gait efficiency, and fall prevention.",
+                IsTriggered: false,
+                IsOptimalCandidate: true,
+                SeverityRank: 0,
+                ImpactRank: 4,
+                LeverageRank: 2,
+                TotalRankScore: 0,
+                BuildStrategy: () => throw new InvalidOperationException("No strategy for optimal quadriceps.")
+            ));
+            return;
+        }
+
+        int sev = 1;
+        if (p is not null) sev = SeverityFromPercentile(p.Value);
+        if (asymTrigger) sev = Math.Max(sev, 2);
+        if (fiveTrigger || thirtyTrigger) sev = Math.Max(sev, 2);
+
+        var triggers = new List<string>();
+        if (pctTrigger && p is not null) triggers.Add($"{SeverityLabel(sev)} deficit ({p.Value:0.#}th percentile)");
+        if (asymTrigger) triggers.Add($"Asymmetry >10% ({asym:0.#}%)");
+        if (fiveTrigger) triggers.Add("5x sit-to-stand below threshold");
+        if (thirtyTrigger) triggers.Add("30s sit-to-stand below optimal");
+
+        var triggerFinding = string.Join("; ", triggers);
+
+        findings.Add(new Finding(
+            Domain: "Stay Strong & Stable",
+            Metric: "Quadriceps Strength",
+            TriggerFinding: triggerFinding,
+            Why: "Quadriceps strength (and chair rise performance) is strongly tied to mobility reserve, fall risk, and long-term independence.",
+            IsTriggered: true,
+            IsOptimalCandidate: false,
+            SeverityRank: sev,
+            ImpactRank: 4,
+            LeverageRank: 2,
+            TotalRankScore: (sev * 100) + (4 * 10) + 2,
+            BuildStrategy: () => new Strategy(
+                Domain: "Stay Strong & Stable",
+                TriggerMetric: "Quadriceps Strength / Chair Rise",
+                TriggerFinding: triggerFinding,
+                WhyThisMatters: "Quadriceps strength helps preserve walking, stair climbing, and the ability to rise from a chair — core capacities that protect against falls and disability.",
+                StrategyStatement: "Improving quadriceps strength appears to be a high-leverage opportunity to strengthen mobility reserve and reduce fall and disability risk.",
+                TacticModules: new List<TacticModule>
+                {
+                    new("Progressive Lower-Extremity Loading",
+                        "Building strength safely reduces compensation patterns and improves day-to-day function.",
+                        new List<string>
+                        {
+                            "Use progressive resistance work that targets the lower extremities (knee-dominant patterns) within tolerable ranges.",
+                            "Bias high-quality mechanics and gradual progression rather than aggressive loading.",
+                            "If you have prior injury or surgery, choose exercises that respect those constraints and progress conservatively."
+                        })
+                }
+            )
+        ));
+    }
+
+    private static void AddGripFinding(List<Finding> findings, PerformanceAge.Inputs inputs)
+    {
+        AddPercentileFinding(findings,
+            domain: "Stay Strong & Stable",
+            metric: "Grip Strength",
+            percentile: inputs.GripStrengthPercentile,
+            impactRank: 2,
+            leverageRank: 2,
+            why: "Grip strength is a marker of overall strength reserve and predicts functional decline and all-cause mortality.");
+    }
+
+    private static void AddPowerFinding(List<Finding> findings, PerformanceAge.Inputs inputs)
+    {
+        AddPercentileFinding(findings,
+            domain: "Stay Strong & Stable",
+            metric: "Power",
+            percentile: inputs.PowerPercentile,
+            impactRank: 2,
+            leverageRank: 2,
+            why: "Power (rate of force development) supports rapid balance correction and fall prevention and tends to decline faster than strength with aging.");
+    }
+
+    private static void AddBalanceFinding(List<Finding> findings, PerformanceAge.Inputs inputs, PerformanceAge.Result computed)
+    {
+        // Trigger: <75th percentile OR inability to hold modified CTSIB positions for 30 seconds
+        var p = inputs.BalancePercentile;
+        bool pctTrigger = p is not null && p.Value < 75;
+        bool ctsibTrigger = IndicatesBalanceFailure(computed.BalanceAssessment);
+
+        if (p is null && !ctsibTrigger) return;
+
+        bool optimal = p is not null && p.Value >= 75 && !ctsibTrigger;
+        if (optimal)
+        {
+            findings.Add(new Finding(
+                Domain: "Stay Strong & Stable",
+                Metric: "Balance",
+                TriggerFinding: $"Optimal (≥75th percentile; {p!.Value:0.#}th)",
+                Why: "Strong balance protects against falls and supports confidence under fatigue or sensory challenge.",
+                IsTriggered: false,
+                IsOptimalCandidate: true,
+                SeverityRank: 0,
+                ImpactRank: 3,
+                LeverageRank: 2,
+                TotalRankScore: 0,
+                BuildStrategy: () => throw new InvalidOperationException("No strategy for optimal balance.")
+            ));
+            return;
+        }
+
+        int sev = 1;
+        if (p is not null) sev = SeverityFromPercentile(p.Value);
+        if (ctsibTrigger) sev = Math.Max(sev, 2);
+
+        var parts = new List<string>();
+        if (p is not null && p.Value < 75) parts.Add($"{SeverityLabel(sev)} deficit ({p.Value:0.#}th percentile)");
+        if (ctsibTrigger) parts.Add("CTSIB hold deficit (<30s)");
+        var triggerFinding = string.Join("; ", parts);
+
+        findings.Add(new Finding(
+            Domain: "Stay Strong & Stable",
+            Metric: "Balance",
+            TriggerFinding: triggerFinding,
+            Why: "Balance deficits are strongly linked to fall risk and reduced functional confidence.",
+            IsTriggered: true,
+            IsOptimalCandidate: false,
+            SeverityRank: sev,
+            ImpactRank: 3,
+            LeverageRank: 2,
+            TotalRankScore: (sev * 100) + (3 * 10) + 2,
+            BuildStrategy: () => new Strategy(
+                Domain: "Stay Strong & Stable",
+                TriggerMetric: "Balance",
+                TriggerFinding: triggerFinding,
+                WhyThisMatters: "Balance is a direct predictor of fall risk and functional confidence, especially under fatigue or sensory challenge.",
+                StrategyStatement: "Improving your balance represents a meaningful opportunity to reduce fall risk by progressively training stability under increasing sensory and mechanical challenge.",
+                TacticModules: BuildDefaultTactics("Balance")
+            )
+        ));
+    }
+
+    private static void AddChairRiseFinding(List<Finding> findings, PerformanceAge.Inputs inputs, PerformanceAge.Result computed)
+    {
+        // Trigger: ChairRisePercentile <75 OR explicit 5x/30s chair rise failure indicators
+        var p = inputs.ChairRisePercentile;
+        bool pctTrigger = p is not null && p.Value < 75;
+        bool fiveTrigger = IsPercentBelow(computed.ChairRiseFiveTimes, 75) || ContainsFailFlag(computed.ChairRiseFiveTimes);
+        bool thirtyTrigger = ContainsFailFlag(computed.ChairRiseThirtySeconds);
+
+        if (p is null && !fiveTrigger && !thirtyTrigger) return;
+
+        bool optimal = (p is null || p.Value >= 75) && !fiveTrigger && !thirtyTrigger;
+        if (optimal)
+        {
+            findings.Add(new Finding(
+                Domain: "Stay Strong & Stable",
+                Metric: "Chair Rise",
+                TriggerFinding: p is null ? "Optimal" : $"Optimal (≥75th percentile; {p.Value:0.#}th)",
+                Why: "Chair rise performance reflects lower-body strength and coordination that support independence.",
+                IsTriggered: false,
+                IsOptimalCandidate: true,
+                SeverityRank: 0,
+                ImpactRank: 3,
+                LeverageRank: 2,
+                TotalRankScore: 0,
+                BuildStrategy: () => throw new InvalidOperationException("No strategy for optimal chair rise.")
+            ));
+            return;
+        }
+
+        int sev = 1;
+        if (p is not null) sev = SeverityFromPercentile(p.Value);
+        if (fiveTrigger || thirtyTrigger) sev = Math.Max(sev, 2);
+
+        var parts = new List<string>();
+        if (pctTrigger && p is not null) parts.Add($"{SeverityLabel(sev)} deficit ({p.Value:0.#}th percentile)");
+        if (fiveTrigger) parts.Add("5x sit-to-stand below threshold");
+        if (thirtyTrigger) parts.Add("30s sit-to-stand below optimal");
+        var triggerFinding = string.Join("; ", parts);
+
+        findings.Add(new Finding(
+            Domain: "Stay Strong & Stable",
+            Metric: "Chair Rise",
+            TriggerFinding: triggerFinding,
+            Why: "Chair rise performance reflects lower-body strength and neuromuscular coordination and is strongly linked to mobility reserve.",
+            IsTriggered: true,
+            IsOptimalCandidate: false,
+            SeverityRank: sev,
+            ImpactRank: 3,
+            LeverageRank: 2,
+            TotalRankScore: (sev * 100) + (3 * 10) + 2,
+            BuildStrategy: () => new Strategy(
+                Domain: "Stay Strong & Stable",
+                TriggerMetric: "Chair Rise Tests",
+                TriggerFinding: triggerFinding,
+                WhyThisMatters: "Chair rise tests are practical markers of lower-body strength and coordination, often preceding noticeable mobility decline.",
+                StrategyStatement: "Improve sit-to-stand ability by pairing targeted lower-body strength with repeated practice of the rising pattern to build efficiency and reserve.",
+                TacticModules: BuildDefaultTactics("Chair Rise")
+            )
+        ));
+    }
+
+    private static void AddHipStrengthFinding(List<Finding> findings, PerformanceAge.Result computed)
+    {
+        // Trigger: <75th percentile OR asymmetry >10% (we currently support asymmetry via numeric field)
+        bool asymTrigger = computed.HipAsymmetryPercent is not null && computed.HipAsymmetryPercent.Value > 10;
+        bool qualTrigger = IsQualitativeIssue(computed.HipStrength);
+
+        if (!asymTrigger && !qualTrigger)
+        {
+            if (!string.IsNullOrWhiteSpace(computed.HipStrength) || computed.HipAsymmetryPercent is not null)
+            {
+                findings.Add(new Finding(
+                    Domain: "Stay Strong & Stable",
+                    Metric: "Hip Strength",
+                    TriggerFinding: "Optimal",
+                    Why: "Hip strength supports gait efficiency, balance, and trunk stability.",
+                    IsTriggered: false,
+                    IsOptimalCandidate: true,
+                    SeverityRank: 0,
+                    ImpactRank: 2,
+                    LeverageRank: 2,
+                    TotalRankScore: 0,
+                    BuildStrategy: () => throw new InvalidOperationException("No strategy for optimal hip strength.")
+                ));
+            }
+            return;
+        }
+
+        var parts = new List<string>();
+        if (asymTrigger) parts.Add($"Asymmetry >10% ({computed.HipAsymmetryPercent:0.#}%)");
+        if (qualTrigger) parts.Add("Reported deficit / limitation");
+        var triggerFinding = string.Join("; ", parts);
+
+        findings.Add(new Finding(
+            Domain: "Stay Strong & Stable",
+            Metric: "Hip Strength",
+            TriggerFinding: triggerFinding,
+            Why: "Hip strength deficits and asymmetry can drive compensation patterns, reduce gait efficiency, and impair balance.",
+            IsTriggered: true,
+            IsOptimalCandidate: false,
+            SeverityRank: 2,
+            ImpactRank: 2,
+            LeverageRank: 2,
+            TotalRankScore: (2 * 100) + (2 * 10) + 2,
+            BuildStrategy: () => new Strategy(
+                Domain: "Stay Strong & Stable",
+                TriggerMetric: "Hip Strength",
+                TriggerFinding: triggerFinding,
+                WhyThisMatters: "Hip abductors and extensors support pelvic stability, gait mechanics, and balance — especially under fatigue.",
+                StrategyStatement: "Improve hip strength (and reduce asymmetry when present) to enhance gait efficiency and balance while reducing compensation-related strain.",
+                TacticModules: new List<TacticModule>
+                {
+                    new("Targeted Hip Strengthening",
+                        "Progressive strengthening of identified weak patterns can meaningfully improve stability and efficiency.",
+                        new List<string>
+                        {
+                            "Prioritize hip abduction/extension strength with progressive resistance and strict form.",
+                            "If asymmetry is present, emphasize controlled work on the weaker side without turning sessions into punishment.",
+                            "Progress challenge only when technique remains stable and symptoms stay calm."
+                        })
+                }
+            )
+        ));
+    }
+
+    private static void AddCalfStrengthFinding(List<Finding> findings, PerformanceAge.Result computed)
+    {
+        // Trigger: <75th percentile OR asymmetry >10% (supported via numeric field)
+        bool asymTrigger = computed.CalfAsymmetryPercent is not null && computed.CalfAsymmetryPercent.Value > 10;
+        bool qualTrigger = IsQualitativeIssue(computed.CalfStrength);
+
+        if (!asymTrigger && !qualTrigger)
+        {
+            if (!string.IsNullOrWhiteSpace(computed.CalfStrength) || computed.CalfAsymmetryPercent is not null)
+            {
+                findings.Add(new Finding(
+                    Domain: "Stay Strong & Stable",
+                    Metric: "Calf Strength",
+                    TriggerFinding: "Optimal",
+                    Why: "Calf strength supports propulsion, balance corrections, and sustained walking capacity.",
+                    IsTriggered: false,
+                    IsOptimalCandidate: true,
+                    SeverityRank: 0,
+                    ImpactRank: 2,
+                    LeverageRank: 1,
+                    TotalRankScore: 0,
+                    BuildStrategy: () => throw new InvalidOperationException("No strategy for optimal calf strength.")
+                ));
+            }
+            return;
+        }
+
+        var parts = new List<string>();
+        if (asymTrigger) parts.Add($"Asymmetry >10% ({computed.CalfAsymmetryPercent:0.#}%)");
+        if (qualTrigger) parts.Add("Reported deficit / limitation");
+        var triggerFinding = string.Join("; ", parts);
+
+        findings.Add(new Finding(
+            Domain: "Stay Strong & Stable",
+            Metric: "Calf Strength",
+            TriggerFinding: triggerFinding,
+            Why: "Calf deficits and asymmetry can reduce walking reserve and increase compensation and overuse risk.",
+            IsTriggered: true,
+            IsOptimalCandidate: false,
+            SeverityRank: 2,
+            ImpactRank: 2,
+            LeverageRank: 1,
+            TotalRankScore: (2 * 100) + (2 * 10) + 1,
+            BuildStrategy: () => new Strategy(
+                Domain: "Stay Strong & Stable",
+                TriggerMetric: "Calf Strength",
+                TriggerFinding: triggerFinding,
+                WhyThisMatters: "Calves contribute to propulsion and balance corrections — especially during faster walking, uneven terrain, and fatigue.",
+                StrategyStatement: "Improve calf strength and control (and reduce asymmetry when present) to support walking reserve and balance.",
+                TacticModules: new List<TacticModule>
+                {
+                    new("Calf Strength + Control",
+                        "Progressing from double-limb to single-limb and emphasizing control supports function and resilience.",
+                        new List<string>
+                        {
+                            "Build controlled calf strength through progressive loading, including eccentric control when tolerated.",
+                            "If asymmetry is present, add a small volume bias to the weaker side.",
+                            "Keep progressions gradual; pain spikes are a signal to regress and rebuild."
+                        })
+                }
+            )
+        ));
+    }
+
+    private static void AddRotatorCuffFinding(List<Finding> findings, PerformanceAge.Result computed)
+    {
+        // Trigger: <75th percentile in any muscle OR qualitative issue flag
+        bool pctTrigger = computed.RotatorCuffLowestMusclePercentile is not null && computed.RotatorCuffLowestMusclePercentile.Value < 75;
+        bool qualTrigger = IsQualitativeIssue(computed.RotatorCuffIntegrity);
+
+        if (!pctTrigger && !qualTrigger)
+        {
+            if (!string.IsNullOrWhiteSpace(computed.RotatorCuffIntegrity) || computed.RotatorCuffLowestMusclePercentile is not null)
+            {
+                findings.Add(new Finding(
+                    Domain: "Stay Strong & Stable",
+                    Metric: "Rotator Cuff Integrity",
+                    TriggerFinding: "Optimal",
+                    Why: "Shoulder stability supports pain-free loading and preserves upper-extremity function over time.",
+                    IsTriggered: false,
+                    IsOptimalCandidate: true,
+                    SeverityRank: 0,
+                    ImpactRank: 1,
+                    LeverageRank: 1,
+                    TotalRankScore: 0,
+                    BuildStrategy: () => throw new InvalidOperationException("No strategy for optimal rotator cuff.")
+                ));
+            }
+            return;
+        }
+
+		// Severity: floor-to-stand has no percentile input in this model, so treat as qualitative severity.
+		int sev = 1;
+
+        var p = computed.RotatorCuffLowestMusclePercentile;
+        var parts = new List<string>();
+        if (pctTrigger && p is not null) parts.Add($"Sub-optimal (lowest muscle {p.Value:0.#}th percentile)");
+        if (qualTrigger) parts.Add("Reported deficit / limitation");
+        var triggerFinding = string.Join("; ", parts);
+
+		findings.Add(new Finding(
+            Domain: "Stay Strong & Stable",
+            Metric: "Rotator Cuff Integrity",
+            TriggerFinding: triggerFinding,
+            Why: "Shoulder stability deficits can limit pain-free training and daily tasks and may increase overuse risk.",
+            IsTriggered: true,
+            IsOptimalCandidate: false,
+            SeverityRank: 1,
+            ImpactRank: 1,
+            LeverageRank: 1,
+            TotalRankScore: (1 * 100) + (1 * 10) + 1,
+            BuildStrategy: () => new Strategy(
+                Domain: "Stay Strong & Stable",
+                TriggerMetric: "Rotator Cuff Integrity",
+                TriggerFinding: triggerFinding,
+                WhyThisMatters: "Rotator cuff and scapular control protect shoulder joints and help preserve pain-free overhead and pushing/pulling capacity.",
+                StrategyStatement: "Improve shoulder stability by strengthening the rotator cuff and scapular control patterns with progressive loading.",
+                TacticModules: new List<TacticModule>
+                {
+                    new("Stability + Control",
+                        "Building control first makes loading safer and more durable.",
+                        new List<string>
+                        {
+                            "Emphasize targeted rotator cuff work and scapular control patterns within comfortable ranges.",
+                            "Progress load gradually while keeping motion quality high and irritation low.",
+                            "Pair with posture work if forward-shoulder posture is contributing to symptoms."
+                        })
+                }
+            )
+        ));
+    }
+
+    private static void AddImtpFinding(List<Finding> findings, PerformanceAge.Result computed)
+    {
+        // Trigger: <75th percentile (if percentile is provided)
+        var p = computed.IsometricThighPullPercentile;
+        if (p is null) return;
+
+        bool optimal = p.Value >= 75;
+        if (optimal)
+        {
+            findings.Add(new Finding(
+                Domain: "Stay Strong & Stable",
+                Metric: "Global Strength (IMTP)",
+                TriggerFinding: $"Optimal (≥75th percentile; {p.Value:0.#}th)",
+                Why: "Global strength reserve supports independence and resilience under stress and injury.",
+                IsTriggered: false,
+                IsOptimalCandidate: true,
+                SeverityRank: 0,
+                ImpactRank: 3,
+                LeverageRank: 2,
+                TotalRankScore: 0,
+                BuildStrategy: () => throw new InvalidOperationException("No strategy for optimal IMTP.")
+            ));
+            return;
+        }
+
+        int sev = SeverityFromPercentile(p.Value);
+        var triggerFinding = $"{SeverityLabel(sev)} deficit ({p.Value:0.#}th percentile)";
+
+        findings.Add(new Finding(
+            Domain: "Stay Strong & Stable",
+            Metric: "Global Strength (IMTP)",
+            TriggerFinding: triggerFinding,
+            Why: "Lower global strength reserve can reduce functional capacity and resilience and raises the importance of progressive foundational strength work.",
+            IsTriggered: true,
+            IsOptimalCandidate: false,
+            SeverityRank: sev,
+            ImpactRank: 3,
+            LeverageRank: 2,
+            TotalRankScore: (sev * 100) + (3 * 10) + 2,
+            BuildStrategy: () => new Strategy(
+                Domain: "Stay Strong & Stable",
+                TriggerMetric: "IMTP",
+                TriggerFinding: triggerFinding,
+                WhyThisMatters: "Global strength reserve supports independence and overall resilience and makes other training safer and more effective.",
+                StrategyStatement: "Improving global strength capacity appears to be a foundational opportunity to increase resilience and preserve long-term independence.",
+                TacticModules: new List<TacticModule>
+                {
+                    new("Foundational Strength",
+                        "Progressive compound and accessory strength work raises overall capacity.",
+                        new List<string>
+                        {
+                            "Build strength with progressive loading using compound patterns while maintaining high-quality mechanics.",
+                            "Use accessory work to address weak links that limit output or tolerance.",
+                            "Progress conservatively to keep recovery stable and reduce injury risk."
+                        })
+                }
+            )
+        ));
+    }
 
     private static void AddPercentileFinding(
         List<Finding> findings,
@@ -405,6 +851,9 @@ public static class PhysicalPerformanceStrategyEngine
             return;
         }
 
+		// Severity: floor-to-stand has no percentile input in this model, so treat as qualitative severity.
+		int sev = 1;
+
         findings.Add(new Finding(
             Domain: "Stay Strong & Stable",
             Metric: "Floor-to-Stand",
@@ -470,6 +919,9 @@ public static class PhysicalPerformanceStrategyEngine
             return;
         }
 
+        // Severity: posture trigger is based on a measurement threshold (cm), not a percentile input.
+        int sev = 1;
+
         findings.Add(new Finding(
             Domain: "Stay Strong & Stable",
             Metric: "Posture (Tragus-to-Wall)",
@@ -504,20 +956,42 @@ public static class PhysicalPerformanceStrategyEngine
 
     private static void AddMobilityFinding(List<Finding> findings, PerformanceAge.Result computed)
     {
-        // Spec trigger: pain or restricted motion (qualitative)
-        // We only trigger if the string explicitly indicates a limitation.
-        if (!IsQualitativeIssue(computed.PostureAssessment) && !IsQualitativeIssue(computed.HipStrength) &&
-            !IsQualitativeIssue(computed.CalfStrength) && !IsQualitativeIssue(computed.RotatorCuffIntegrity))
+        // Spec trigger: pain or restricted motion.
+        // Prefer the explicit MobilityRom field if provided; otherwise fall back to other qualitative fields.
+        bool explicitIssue = IsQualitativeIssue(computed.MobilityRom);
+        bool inferredIssue = !explicitIssue && (
+            IsQualitativeIssue(computed.PostureAssessment) ||
+            IsQualitativeIssue(computed.HipStrength) ||
+            IsQualitativeIssue(computed.CalfStrength) ||
+            IsQualitativeIssue(computed.RotatorCuffIntegrity)
+        );
+
+        if (!explicitIssue && !inferredIssue)
         {
-            // No explicit mobility/ROM field exists yet beyond these; no trigger.
+            // If MobilityRom is explicitly provided and looks normal, allow reassurance.
+            if (!string.IsNullOrWhiteSpace(computed.MobilityRom))
+            {
+                findings.Add(new Finding(
+                    Domain: "Stay Strong & Stable",
+                    Metric: "Mobility / ROM",
+                    TriggerFinding: "Optimal",
+                    Why: "Good mobility and pain-free range supports efficient strength and aerobic work.",
+                    IsTriggered: false,
+                    IsOptimalCandidate: true,
+                    SeverityRank: 0,
+                    ImpactRank: 2,
+                    LeverageRank: 2,
+                    TotalRankScore: 0,
+                    BuildStrategy: () => throw new InvalidOperationException("No strategy for optimal mobility/ROM.")
+                ));
+            }
             return;
         }
 
-        // NOTE: This is conservative: it triggers only when the qualitative fields imply pain/limitation.
         findings.Add(new Finding(
             Domain: "Stay Strong & Stable",
             Metric: "Mobility / ROM",
-            TriggerFinding: "Reported pain or restricted motion",
+            TriggerFinding: string.IsNullOrWhiteSpace(computed.MobilityRom) ? "Pain or restricted motion (inferred)" : computed.MobilityRom.Trim(),
             Why: "Mobility restrictions can drive compensations that increase injury risk and limit training options.",
             IsTriggered: true,
             IsOptimalCandidate: false,
@@ -550,23 +1024,42 @@ public static class PhysicalPerformanceStrategyEngine
     {
         if (string.IsNullOrWhiteSpace(computed.TrunkEndurance)) return;
 
-        // Today this is a string; trigger only if it clearly indicates low performance.
-        if (!IsQualitativeIssue(computed.TrunkEndurance))
+        // Trigger: <75th percentile OR explicit limitation language.
+        bool pctTrigger = IsPercentBelow(computed.TrunkEndurance, 75);
+        bool qualTrigger = IsQualitativeIssue(computed.TrunkEndurance);
+
+        if (!pctTrigger && !qualTrigger)
         {
+            findings.Add(new Finding(
+                Domain: "Stay Strong & Stable",
+                Metric: "Trunk Endurance",
+                TriggerFinding: "Optimal",
+                Why: "Trunk endurance supports safe force transfer, posture under fatigue, and reduces compensation-driven overuse.",
+                IsTriggered: false,
+                IsOptimalCandidate: true,
+                SeverityRank: 0,
+                ImpactRank: 2,
+                LeverageRank: 2,
+                TotalRankScore: 0,
+                BuildStrategy: () => throw new InvalidOperationException("No strategy for optimal trunk endurance.")
+            ));
             return;
         }
+
+		// Severity: percentile-based deficits get higher severity than qualitative-only flags.
+		int sev = pctTrigger ? 2 : 1;
 
         findings.Add(new Finding(
             Domain: "Stay Strong & Stable",
             Metric: "Trunk Endurance",
-            TriggerFinding: "Sub-optimal trunk endurance (reported)",
+            TriggerFinding: pctTrigger ? "Sub-optimal trunk endurance (<75th percentile)" : "Sub-optimal trunk endurance (reported)",
             Why: "Trunk endurance supports safe force transfer, posture under fatigue, and reduces compensation-driven overuse.",
             IsTriggered: true,
             IsOptimalCandidate: false,
-            SeverityRank: 1,
+            SeverityRank: sev,
             ImpactRank: 2,
             LeverageRank: 2,
-            TotalRankScore: (1 * 100) + (2 * 10) + 2,
+            TotalRankScore: (sev * 100) + (2 * 10) + 2,
             BuildStrategy: () => new Strategy(
                 Domain: "Stay Strong & Stable",
                 TriggerMetric: "Trunk Endurance",
@@ -787,44 +1280,65 @@ public static class PhysicalPerformanceStrategyEngine
 
     private static List<Reassurance> BuildReassurances(List<Finding> optimalCandidates)
     {
-        // Prefer domain-level reassurances and limit to 1–2 total.
-        var domainGroups = optimalCandidates
+        // Spec: prefer domain-level reassurance over metric-level, and keep it short (1–2).
+        // We treat a domain as “reassurance-worthy” if it has at least 2 independently optimal metrics.
+        var groups = optimalCandidates
             .GroupBy(f => f.Domain)
             .OrderByDescending(g => g.Count())
             .ToList();
 
         var outList = new List<Reassurance>();
-        foreach (var g in domainGroups)
+
+        // 1) Domain-level first
+        foreach (var g in groups)
         {
             if (outList.Count >= 2) break;
+            if (g.Count() < 2) continue;
 
-            // Choose the most “meaningful” metric within the domain for reassurance.
-            var pick = g
+            outList.Add(new Reassurance(
+                Domain: g.Key,
+                Metric: "Domain",
+                Status: "Optimal",
+                ReassuranceText: BuildDomainReassuranceText(g.Key)
+            ));
+        }
+
+        // 2) If we still have room, add a single metric-level reassurance
+        if (outList.Count < 2)
+        {
+            var pick = optimalCandidates
                 .OrderByDescending(f => f.ImpactRank)
                 .ThenByDescending(f => f.LeverageRank)
                 .FirstOrDefault();
 
-            if (pick is null) continue;
-
-            outList.Add(new Reassurance(
-                Domain: pick.Domain,
-                Metric: pick.Metric,
-                Status: "Optimal",
-                ReassuranceText: BuildReassuranceText(pick.Domain, pick.Metric)
-            ));
+            if (pick is not null)
+            {
+                outList.Add(new Reassurance(
+                    Domain: pick.Domain,
+                    Metric: pick.Metric,
+                    Status: "Optimal",
+                    ReassuranceText: BuildMetricReassuranceText(pick.Domain, pick.Metric)
+                ));
+            }
         }
 
-        return outList;
+        // Cap at 2 no matter what.
+        return outList.Take(2).ToList();
     }
 
-    private static string BuildReassuranceText(string domain, string metric)
+    private static string BuildDomainReassuranceText(string domain) => domain switch
+    {
+        "Be Fit & Mobile" => "Be Fit & Mobile looks strong overall. Keep consistency high — it’s the maintenance dose that protects your reserve.",
+        "Stay Strong & Stable" => "Stay Strong & Stable looks strong overall. Maintain it with steady strength + balance work so it stays a protective asset.",
+        _ => "This domain looks strong overall. Maintain it so it stays a protective asset over time."
+    };
+
+    private static string BuildMetricReassuranceText(string domain, string metric)
     {
         if (domain == "Be Fit & Mobile")
-        {
-            return "Your mobility reserve appears strong in this domain. Keep doing what you’re doing — consistency is the maintenance dose.";
-        }
+            return "This marker looks strong. Keep it topped up with consistent training and smart recovery.";
 
-        return "This area looks strong for your age and sex. Maintain it with steady training so it stays a protective asset over time.";
+        return "This marker looks strong. Maintain it with steady practice so it stays protective over time.";
     }
 
     // ----------------------------
@@ -862,6 +1376,54 @@ public static class PhysicalPerformanceStrategyEngine
         var joined = string.Join(", ", parts);
         if (string.IsNullOrWhiteSpace(joined)) joined = "VO₂/HRR data provided";
         return isTriggered ? $"Sub-optimal: {joined}" : $"Optimal: {joined}";
+    }
+
+    private static bool IsPercentBelow(string? text, double threshold)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return false;
+        var t = text.Trim();
+        // Look for explicit percent values (e.g., "72%", "Percent: 60")
+        if (t.Contains('%'))
+        {
+            var n = ParseFirstNumber(t);
+            return n is not null && n.Value < threshold;
+        }
+        // Allow formats like "0.72" to mean 72% if it looks like a ratio
+        var raw = ParseFirstNumber(t);
+        if (raw is null) return false;
+        if (raw.Value > 0 && raw.Value <= 1.0) return (raw.Value * 100.0) < threshold;
+        return false;
+    }
+
+    private static bool ContainsFailFlag(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return false;
+        var t = text.Trim().ToLowerInvariant();
+        string[] flags = { "below", "suboptimal", "sub-optimal", "fail", "failed", "unable", "couldn't", "couldnt", "<", "under" };
+        return flags.Any(t.Contains);
+    }
+
+    private static bool IndicatesBalanceFailure(string? balanceAssessment)
+    {
+        if (string.IsNullOrWhiteSpace(balanceAssessment)) return false;
+        var t = balanceAssessment.ToLowerInvariant();
+
+        // Conservative: only interpret as CTSIB failure if the text suggests CTSIB-like testing.
+        if (!t.Contains("ctsib") && !t.Contains("sensory") && !t.Contains("foam") && !t.Contains("eyes closed") && !t.Contains("modified"))
+        {
+            return false;
+        }
+
+        // If any explicitly recorded hold time is <30 seconds, trigger.
+        // Examples: "position 4: 18s", "hold 25 sec", "20s" etc.
+        if (t.Contains("s"))
+        {
+            var n = ParseFirstNumber(balanceAssessment);
+            if (n is not null && n.Value < 30) return true;
+        }
+
+        // Also allow explicit failure language.
+        return ContainsFailFlag(balanceAssessment);
     }
 
     private static double? ParseFirstNumber(string text)

@@ -43,7 +43,19 @@ public static class PerformanceAge
     string? HipStrength = null,
     string? CalfStrength = null,
     string? RotatorCuffIntegrity = null,
-    double? IsometricThighPull = null
+    double? IsometricThighPull = null,
+
+    // ---- Additional fields used by the PhysicalPerformanceStrategyEngine spec (optional) ----
+    // These are NOT used by the percentile-based PerformanceAge calculation.
+    string? MobilityRom = null,
+    string? BalanceAssessment = null,
+    string? ChairRiseFiveTimes = null,
+    string? ChairRiseThirtySeconds = null,
+    double? QuadricepsAsymmetryPercent = null,
+    double? HipAsymmetryPercent = null,
+    double? CalfAsymmetryPercent = null,
+    double? IsometricThighPullPercentile = null,
+    double? RotatorCuffLowestMusclePercentile = null
     );
 
     public static Result Calculate(Inputs x)

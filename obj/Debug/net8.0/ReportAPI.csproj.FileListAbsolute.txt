@@ -26,3 +26,5 @@ C:\Users\rober\ReportAPI\ReportAPI\obj\Debug\net8.0\ReportAPI.genruntimeconfig.c
 C:\Users\rober\ReportAPI\ReportAPI\obj\Debug\net8.0\ref\ReportAPI.dll
 C:\Users\rober\ReportAPI\ReportAPI\bin\Debug\net8.0\full_test_payload.json
 C:\Users\rober\ReportAPI\ReportAPI\bin\Debug\net8.0\output.json
+C:\Users\rober\ReportAPI\ReportAPI\bin\Debug\net8.0\report.json
+C:\Users\rober\ReportAPI\ReportAPI\bin\Debug\net8.0\test.json
