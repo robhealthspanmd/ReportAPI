@@ -197,7 +197,17 @@ app.MapPost("/api/report.json", async (HttpContext http) =>
 
     var brain = BrainHealth.Calculate(req.BrainHealth);
 
-    var cardio = req.Cardiology is null ? null : Cardiology.Calculate(req.Cardiology);
+    Cardiology.Result? cardio = null;
+    if (req.Cardiology is not null)
+    {
+        var modifiableScore = Cardiology.CalculateModifiableHeartHealthScore(
+            req.HealthAge,
+            req.PerformanceAge,
+            req.PhenoAge,
+            req.Cardiology);
+        var cardioInputs = req.Cardiology with { ModifiableHeartHealthScore = modifiableScore };
+        cardio = Cardiology.Calculate(cardioInputs);
+    }
 
     // 6) Strategy engine (deterministic; only emits strategies if there are triggers)
     var perfStrategy = PhysicalPerformanceStrategyEngine.Generate(req.PerformanceAge, performance);
