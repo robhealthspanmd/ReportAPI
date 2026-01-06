@@ -56,7 +56,8 @@ public static class JsonReportBuilder
                 performanceAge = performance,
                 physicalPerformanceStrategyEngine = physicalPerformanceStrategyEngine,
                 brainHealth = brain,
-                cardiology = cardio
+                cardiology = cardio,
+                toxinsLifestyle = ToxinsLifestyle.Evaluate(req.ToxinsLifestyle, req.BrainHealth.PerceivedStressScore)
             },
 
             scores = new
