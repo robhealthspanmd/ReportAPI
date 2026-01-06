@@ -43,14 +43,29 @@
   },
   "performanceAge": {
     "chronologicalAgeYears": 34,
+
     "vo2MaxPercentile": 58,
-    "quadricepsStrengthPercentile": 72,
-    "gripStrengthPercentile": 65,
+    "quadricepsStrengthPercentile": 78,
+    "gripStrengthPercentile": 82,
     "gaitSpeedComfortablePercentile": 55,
     "gaitSpeedMaxPercentile": 60,
-    "powerPercentile": 62,
+    "powerPercentile": 80,
     "balancePercentile": 50,
-    "chairRisePercentile": 57
+    "chairRisePercentile": 54,
+
+    "quadricepsAsymmetryPercent": 14,
+    "hipAsymmetryPercent": 6,
+    "calfAsymmetryPercent": 4,
+
+    "chairRiseFiveTimes": "68%",
+    "chairRiseThirtySeconds": "below optimal for age",
+
+    "trunkEndurance": "early fatigue noted",
+    "balanceAssessment": "CTSIB foam eyes closed: 18s",
+    "mobilityRom": "restricted hip extension with discomfort",
+
+    "rotatorCuffLowestMusclePercentile": 82,
+    "isometricThighPullPercentile": 72
   },
   "brainHealth": {
     "cognitiveFunction": 72,

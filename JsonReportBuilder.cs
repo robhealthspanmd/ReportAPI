@@ -60,12 +60,41 @@ public static class JsonReportBuilder
             },
 
             scores = new
-            {
-                healthspanAge = health.HealthAgeFinal,
-                physicalPerformanceAge = performance.PerformanceAge,
-                brainHealthScore = brain.TotalScore,
-                cardiologyRiskCategory = cardio?.RiskCategory
-            },
+{
+    healthspanAge = health.HealthAgeFinal,
+    physicalPerformanceAge = performance.PerformanceAge,
+    brainHealthScore = brain.TotalScore,
+
+    // Legacy (kept for backward compatibility)
+    cardiologyRiskCategory = cardio?.RiskCategory,
+
+    // Heart Health v3.2 assessment outputs (included when cardiology was computed)
+    cardiology = cardio == null ? null : new
+    {
+        assessment = new
+        {
+            heartHealthScore = cardio.HeartHealthScore,
+            heartHealthScoreIsPartial = cardio.HeartHealthScoreIsPartial,
+
+            baselineHeartHealthScore = cardio.BaselineHeartHealthScore,
+            plaqueScore = cardio.PlaqueScore,
+            cardiacPhysiologyScore = cardio.CardiacPhysiologyScore,
+
+            baselineRiskCategory = cardio.BaselineRiskCategory,
+            vascularHealthStatus = cardio.VascularHealthStatus,
+            cardiacPhysiologyStatus = cardio.CardiacPhysiologyStatus,
+
+            // Optional / diagnostic text (assessment only; no recommendations)
+            riskExplanation = cardio.RiskExplanation,
+
+            // Triggers (useful for UI badges + debugging)
+            triggeredByClinicalHistory = cardio.TriggeredByClinicalHistory,
+            triggeredBySevereFinding = cardio.TriggeredBySevereFinding,
+            triggeredByModerateFinding = cardio.TriggeredByModerateFinding,
+            triggeredByMildFinding = cardio.TriggeredByMildFinding
+        }
+    }
+},
 
             ai = new
             {

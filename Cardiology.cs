@@ -1,232 +1,467 @@
 using System;
+using System.Text.Json.Serialization;
 
 public static class Cardiology
 {
-    public sealed record Inputs(
-    // Plaque
-    string? CarotidPlaqueSeverity,     // "none" | "mild" | "moderate" | "severe"
-    string? CoronaryPlaqueSeverity,    // "none" | "mild" | "moderate" | "severe"
+    // -----------------------------
+    // INPUTS (matches frontend payload)
+    // -----------------------------
+    public sealed record Inputs
+    {
+        // Plaque (qualitative)
+        [JsonPropertyName("carotidPlaqueSeverity")]
+        public string? CarotidPlaqueSeverity { get; init; }     // "none" | "mild" | "moderate" | "severe" (free text allowed)
 
-    // Coronary imaging
-    double? CacScore,                 // numeric, allow null
-    double? CacPercentile,            // numeric 0-100, allow null
+        [JsonPropertyName("coronaryPlaqueSeverity")]
+        public string? CoronaryPlaqueSeverity { get; init; }    // "none" | "mild" | "moderate" | "severe" (free text allowed)
 
-    // CTA
-    double? CtaMaxStenosisPercent,    // numeric 0-100, allow null
-    string? CtaOverallResult,         // "low" | "moderate" | "high" | "severe" (only if no score)
+        // Coronary calcium
+        [JsonPropertyName("cacScore")]
+        public double? CacScore { get; init; }
 
-    // Treadmill (overall only)
-    string? TreadmillOverallResult,   // "low" | "moderate" | "high" | "severe"
+        [JsonPropertyName("cacPercentile")]
+        public double? CacPercentile { get; init; }
 
-    // Echo (overall only)
-    string? EchoOverallResult,        // "low" | "moderate" | "high" | "severe"
+        // CTA / angiogram (front-end provides both numeric stenosis and an overall qualitative string)
+        [JsonPropertyName("ctaMaxStenosisPercent")]
+        public double? CtaMaxStenosisPercent { get; init; }
 
-    // Clinical history
-    bool? HasClinicalAscVDHistory,        // true => SEVERE
-    string? ClinicalAscVDHistoryDetails,  // free text
+        [JsonPropertyName("ctaOverallResult")]
+        public string? CtaOverallResult { get; init; }          // "low" | "moderate" | "high" | "severe" (free text allowed)
 
-    // Family history (NEW)
-    bool? HasFamilyHistoryPrematureAscVD,       // true/false/null
-    string? FamilyHistoryPrematureAscVDDetails, // free text
+        // Functional tests (legacy qualitative)
+        [JsonPropertyName("treadmillOverallResult")]
+        public string? TreadmillOverallResult { get; init; }    // "low" | "moderate" | "high" | "severe" (free text allowed)
 
-    // Free text
-    string? SpecificCardiologyInstructions,
-    string? EcgDetails,
-    string? AbdominalAortaScreening,
-    string? CtaPlaqueQuantification,
-string? CtaSoftPlaque,
-string? CtaCalcifiedPlaque,
-string? HardSoftPlaqueRatio
+        [JsonPropertyName("echoOverallResult")]
+        public string? EchoOverallResult { get; init; }         // "low" | "moderate" | "high" | "severe" (free text allowed)
 
+        // Clinical history (legacy + used for "SEVERE" override in v1 behavior)
+        [JsonPropertyName("hasClinicalAscVDHistory")]
+        public bool? HasClinicalAscVDHistory { get; init; }
 
+        [JsonPropertyName("clinicalAscVDHistoryDetails")]
+        public string? ClinicalAscVDHistoryDetails { get; init; }
 
-);
+        [JsonPropertyName("hasFamilyHistoryPrematureAscVD")]
+        public bool? HasFamilyHistoryPrematureAscVD { get; init; }
 
+        [JsonPropertyName("familyHistoryPrematureAscVDDetails")]
+        public string? FamilyHistoryPrematureAscVDDetails { get; init; }
 
-    public sealed record Result(
-        string RiskCategory,               // "LOW" | "MILD" | "MODERATE" | "SEVERE"
-        bool TriggeredByClinicalHistory,
-        bool TriggeredBySevereFinding,
-        bool TriggeredByModerateFinding,
-        bool TriggeredByMildFinding
-    );
+        // Clinician notes / misc (frontend sends these as strings)
+        [JsonPropertyName("specificCardiologyInstructions")]
+        public string? SpecificCardiologyInstructions { get; init; }
 
+        [JsonPropertyName("ecgDetails")]
+        public string? EcgDetails { get; init; }
+
+        [JsonPropertyName("abdominalAortaScreening")]
+        public string? AbdominalAortaScreening { get; init; }
+
+        [JsonPropertyName("ettInterpretation")]
+        public string? EttInterpretation { get; init; }
+
+        [JsonPropertyName("ettFac")]
+        public string? EttFac { get; init; }
+
+        // CTA plaque details (strings)
+        // NOTE: frontend currently sends a misspelled key "ctaPlaquQuantification".
+        [JsonPropertyName("ctaPlaquQuantification")]
+        public string? CtaPlaquQuantification { get; init; }
+
+        // Also accept correct spelling for future-proofing
+        [JsonPropertyName("ctaPlaqueQuantification")]
+        public string? CtaPlaqueQuantification { get; init; }
+
+        [JsonPropertyName("ctaSoftPlaque")]
+        public string? CtaSoftPlaque { get; init; }
+
+        [JsonPropertyName("ctaCalcifiedPlaque")]
+        public string? CtaCalcifiedPlaque { get; init; }
+
+        [JsonPropertyName("hardSoftPlaqueRatio")]
+        public string? HardSoftPlaqueRatio { get; init; }
+
+        // -----------------------------
+        // Optional (v3.2 scoring) inputs
+        // -----------------------------
+        // These are NOT currently in the provided frontend builder, but the scoring model supports them.
+        // They can be added to the frontend later without backend changes.
+
+        [JsonPropertyName("ejectionFractionPercent")]
+        public double? EjectionFractionPercent { get; init; }   // EF %
+
+        [JsonPropertyName("heartStructureSeverity")]
+        public string? HeartStructureSeverity { get; init; }    // "none" | "mild" | "moderate" | "severe"
+
+        [JsonPropertyName("dukeTreadmillScore")]
+        public double? DukeTreadmillScore { get; init; }        // numeric Duke treadmill score
+
+        [JsonPropertyName("ecgSeverity")]
+        public string? EcgSeverity { get; init; }               // "normal" | "mild" | "moderate" (AF/flutter) | "lbbb"
+
+        // Optional: modifiable and delta inputs, if another layer computes them upstream.
+        [JsonPropertyName("modifiableHeartHealthScore")]
+        public int? ModifiableHeartHealthScore { get; init; }   // 0–70
+
+        [JsonPropertyName("softPlaqueDelta")]
+        public int? SoftPlaqueDelta { get; init; }              // −5 / 0 / +5
+    }
+
+    // -----------------------------
+    // OUTPUTS
+    // -----------------------------
+    public sealed record Result
+    {
+        // v3.2 fields (new)
+        public int BaselineHeartHealthScore { get; init; }          // 0–30 (risk-defining)
+        public int PlaqueScore { get; init; }                       // 0–18
+        public int CardiacPhysiologyScore { get; init; }            // 0–12
+        public string BaselineRiskCategory { get; init; } = "Unknown";  // Low/Mild/Moderate/High
+        public string VascularHealthStatus { get; init; } = "Unknown";
+        public string CardiacPhysiologyStatus { get; init; } = "Unknown";
+
+        public int? ModifiableHeartHealthScore { get; init; }       // 0–70 (optional at this layer)
+        public int SoftPlaqueDelta { get; init; }                   // −5 / 0 / +5
+        public int HeartHealthScore { get; init; }                  // Baseline(0–30) + Modifiable(0–70) + Delta, clamped 0–100
+        public bool HeartHealthScoreIsPartial { get; init; }        // true if ModifiableHeartHealthScore missing at this layer
+
+        public string RiskExplanation { get; init; } = "";
+
+        // v1 compatibility fields (kept so the rest of the codebase compiles unchanged)
+        public string RiskCategory { get; init; } = "LOW";          // LOW/MILD/MODERATE/SEVERE
+        public bool TriggeredByClinicalHistory { get; init; }
+        public bool TriggeredBySevereFinding { get; init; }
+        public bool TriggeredByModerateFinding { get; init; }
+        public bool TriggeredByMildFinding { get; init; }
+    }
+
+    // -----------------------------
+    // V3.2 Calculation
+    // -----------------------------
     public static Result Calculate(Inputs x)
     {
-        // Normalize inputs
-        var carotid = NormSeverity(x.CarotidPlaqueSeverity);
-        var coronary = NormSeverity(x.CoronaryPlaqueSeverity);
+        x ??= new Inputs();
 
-        var ctaQual = NormQual(x.CtaOverallResult);
-        var treadmillQual = NormQual(x.TreadmillOverallResult);
-        var echoQual = NormQual(x.EchoOverallResult);
+        // ---- Normalize inputs ----
+        var carotid = ParseSeverity(x.CarotidPlaqueSeverity);
+        var coronary = ParseSeverity(x.CoronaryPlaqueSeverity);
 
-        bool hasAscVD = x.HasClinicalAscVDHistory == true;
+        var ctaQual = ParseQual(x.CtaOverallResult);
 
-        // ---------- SEVERE ----------
-        // Any severe finding OR any clinical ASCVD history
-        if (hasAscVD)
+        var cacScore = ClampOrNull(x.CacScore, 0, 100000);
+        var cacPct = ClampOrNull(x.CacPercentile, 0, 100);
+
+        var ctaStenosis = ClampOrNull(x.CtaMaxStenosisPercent, 0, 100);
+
+        // ---- Plaque evidence rules (v3.2 intent) ----
+        // "Any plaque" triggers: any imaging evidence of plaque.
+        // "Moderate+ plaque" triggers:
+        //  - Moderate+ plaque by coronary/carotid severity
+        //  - CAC percentile > 25
+        //  - CTA/angiogram moderate/severe OR stenosis >= 25%
+        bool anyPlaque =
+            carotid >= Sev.Mild ||
+            coronary >= Sev.Mild ||
+            (cacScore.HasValue && cacScore.Value > 0) ||
+            (cacPct.HasValue && cacPct.Value > 0) ||
+            (ctaStenosis.HasValue && ctaStenosis.Value >= 1) ||
+            ctaQual is Qual.Low or Qual.Moderate or Qual.High or Qual.Severe;
+
+        bool moderatePlusPlaque =
+            carotid >= Sev.Moderate ||
+            coronary >= Sev.Moderate ||
+            (cacPct.HasValue && cacPct.Value > 25) ||
+            (ctaStenosis.HasValue && ctaStenosis.Value >= 25) ||
+            ctaQual is Qual.Moderate or Qual.High or Qual.Severe;
+
+        int plaqueScore = !anyPlaque ? 18 : (moderatePlusPlaque ? 6 : 12);
+
+        // ---- Cardiac physiology scoring (0–12) ----
+        // Missing values default to "best/normal" *but* we mark statuses as "Unknown" if key pieces are missing.
+        bool missingEf = !x.EjectionFractionPercent.HasValue;
+        bool missingStructure = string.IsNullOrWhiteSpace(x.HeartStructureSeverity);
+        bool missingDuke = !x.DukeTreadmillScore.HasValue;
+        bool missingEcg = string.IsNullOrWhiteSpace(x.EcgSeverity);
+
+        int efScore = ScoreEf(x.EjectionFractionPercent);
+        int structureScore = ScoreStructure(x.HeartStructureSeverity);
+        int dukeScore = ScoreDuke(x.DukeTreadmillScore);
+        int ecgScore = ScoreEcg(x.EcgSeverity);
+
+        int physiologyScore = efScore + structureScore + dukeScore + ecgScore;
+
+        // ---- Baseline (0–30) ----
+        int baseline = plaqueScore + physiologyScore;
+
+        // ---- Baseline risk category (Low/Mild/Moderate/High) ----
+        var categoryFromScore = CategoryFromBaselineScore(baseline);
+        var minFromPlaque = moderatePlusPlaque ? BaseCat.Moderate : (anyPlaque ? BaseCat.Mild : BaseCat.Low);
+        var minFromEf = MinCategoryFromEf(x.EjectionFractionPercent);
+
+        var baselineCategory = Max(categoryFromScore, minFromPlaque, minFromEf);
+
+        // ---- Status strings ----
+        string vascularStatus = !anyPlaque
+            ? "No plaque detected"
+            : (moderatePlusPlaque ? "Moderate or greater plaque burden" : "Early/subclinical plaque");
+
+        string physiologyStatus;
+        if (missingEf && missingDuke && missingEcg && missingStructure)
+            physiologyStatus = "Unknown (insufficient physiology inputs)";
+        else if (physiologyScore >= 10)
+            physiologyStatus = "Normal / low concern";
+        else if (physiologyScore >= 7)
+            physiologyStatus = "Mild abnormality";
+        else if (physiologyScore >= 4)
+            physiologyStatus = "Moderate abnormality";
+        else
+            physiologyStatus = "High concern physiology";
+
+        // ---- Heart Health Score (0–100) ----
+        // Per spec: HeartHealthScore = Baseline(0–30) + Modifiable(0–70) + SoftPlaqueDelta (−5/0/+5), clamped 0–100.
+        int delta = NormalizeSoftPlaqueDelta(x.SoftPlaqueDelta);
+        int? modifiable = NormalizeModifiable(x.ModifiableHeartHealthScore);
+
+        bool isPartial = !modifiable.HasValue;
+        int total = ClampInt(baseline + (modifiable ?? 0) + delta, 0, 100);
+
+        // ---- v1 compatibility mapping ----
+        // Keep the old SEVERE behavior for "clinical ASCVD history" so the existing narrative stays consistent.
+        bool triggeredClinical = x.HasClinicalAscVDHistory == true;
+
+        string legacyRiskCategory;
+        if (triggeredClinical)
         {
-            return new Result(
-                RiskCategory: "SEVERE",
-                TriggeredByClinicalHistory: true,
-                TriggeredBySevereFinding: false,
-                TriggeredByModerateFinding: false,
-                TriggeredByMildFinding: false
-            );
+            legacyRiskCategory = "SEVERE";
+        }
+        else
+        {
+            legacyRiskCategory = baselineCategory switch
+            {
+                BaseCat.Low => "LOW",
+                BaseCat.Mild => "MILD",
+                BaseCat.Moderate => "MODERATE",
+                BaseCat.High => "SEVERE", // legacy bucket had no HIGH, so map High -> SEVERE
+                _ => "LOW"
+            };
         }
 
-        bool severe =
-            // CTA ≥ 50% stenosis
-            (x.CtaMaxStenosisPercent is not null && x.CtaMaxStenosisPercent.Value >= 50.0) ||
+        // Some useful v1-style triggers (approximate)
+        bool trigSevere = triggeredClinical || baselineCategory == BaseCat.High;
+        bool trigModerate = baselineCategory == BaseCat.Moderate;
+        bool trigMild = baselineCategory == BaseCat.Mild;
 
-            // CAC ≥ 400 OR ≥ 90th percentile
-            (x.CacScore is not null && x.CacScore.Value >= 400.0) ||
-            (x.CacPercentile is not null && x.CacPercentile.Value >= 90.0) ||
-
-            // Severe plaque
-            carotid == "severe" ||
-            coronary == "severe" ||
-
-            // If only qualitative results exist, treat "high" or "severe" as severe
-            IsQualSevere(ctaQual) ||
-            IsQualSevere(treadmillQual) ||
-            IsQualSevere(echoQual);
-
-        if (severe)
-        {
-            return new Result(
-                RiskCategory: "SEVERE",
-                TriggeredByClinicalHistory: false,
-                TriggeredBySevereFinding: true,
-                TriggeredByModerateFinding: false,
-                TriggeredByMildFinding: false
-            );
-        }
-
-        // ---------- MODERATE ----------
-        bool moderate =
-            // CAC 100–399
-            (x.CacScore is not null && x.CacScore.Value >= 100.0 && x.CacScore.Value <= 399.0) ||
-
-            // Moderate plaque
-            carotid == "moderate" ||
-            coronary == "moderate" ||
-
-            // Qualitative moderate
-            ctaQual == "moderate" ||
-            treadmillQual == "moderate" ||
-            echoQual == "moderate";
-
-        if (moderate)
-        {
-            return new Result(
-                RiskCategory: "MODERATE",
-                TriggeredByClinicalHistory: false,
-                TriggeredBySevereFinding: false,
-                TriggeredByModerateFinding: true,
-                TriggeredByMildFinding: false
-            );
-        }
-
-        // ---------- MILD ----------
-        bool mild =
-            // Any mildly abnormal finding AND no moderate/severe findings (already ensured by earlier returns)
-            carotid == "mild" ||
-            coronary == "mild" ||
-
-            // Mild coronary plaque proxy: CAC > 0 but < 100
-            (x.CacScore is not null && x.CacScore.Value > 0.0 && x.CacScore.Value < 100.0) ||
-
-            // Qualitative "low" treated as mild-abnormal bucket (since it's not "normal" in your dropdown set)
-            ctaQual == "low" ||
-            treadmillQual == "low" ||
-            echoQual == "low";
-
-        if (mild)
-        {
-            return new Result(
-                RiskCategory: "MILD",
-                TriggeredByClinicalHistory: false,
-                TriggeredBySevereFinding: false,
-                TriggeredByModerateFinding: false,
-                TriggeredByMildFinding: true
-            );
-        }
-
-        // ---------- LOW ----------
-        // All must be true (with the fields you currently collect):
-        // - No carotid plaque
-        // - No coronary plaque
-        // - CAC = 0 AND CTA normal (we interpret as no stenosis if provided, and no concerning qualitative flag)
-        // - Treadmill normal (interpreted as empty/none, since your dropdown doesn't include "normal")
-        // - Echo normal (same interpretation)
-        bool noCarotidPlaque = carotid == "none";
-        bool noCoronaryPlaque = coronary == "none";
-
-        bool cacZero = x.CacScore is not null && x.CacScore.Value == 0.0;
-        bool ctaNoStenosis = x.CtaMaxStenosisPercent is null || x.CtaMaxStenosisPercent.Value == 0.0;
-        bool ctaNotFlagged = string.IsNullOrWhiteSpace(ctaQual); // if you choose "low" it is treated as mild
-
-        bool treadmillNormalish = string.IsNullOrWhiteSpace(treadmillQual);
-        bool echoNormalish = string.IsNullOrWhiteSpace(echoQual);
-
-        if (noCarotidPlaque &&
-            noCoronaryPlaque &&
-            cacZero &&
-            ctaNoStenosis &&
-            ctaNotFlagged &&
-            treadmillNormalish &&
-            echoNormalish)
-        {
-            return new Result(
-                RiskCategory: "LOW",
-                TriggeredByClinicalHistory: false,
-                TriggeredBySevereFinding: false,
-                TriggeredByModerateFinding: false,
-                TriggeredByMildFinding: false
-            );
-        }
-
-        // If everything is blank / ambiguous, default conservative
-        return new Result(
-            RiskCategory: "MILD",
-            TriggeredByClinicalHistory: false,
-            TriggeredBySevereFinding: false,
-            TriggeredByModerateFinding: false,
-            TriggeredByMildFinding: true
+        // ---- Explanation (assessment-only, no recommendations) ----
+        string explanation = BuildExplanation(
+            baselineCategory, baseline, plaqueScore, physiologyScore,
+            vascularStatus, physiologyStatus,
+            anyPlaque, moderatePlusPlaque,
+            missingEf, missingStructure, missingDuke, missingEcg,
+            triggeredClinical
         );
-    }
 
-    // -------- helpers --------
-
-    private static string NormSeverity(string? s)
-    {
-        var v = (s ?? "").Trim().ToLowerInvariant();
-        return v switch
+        return new Result
         {
-            "none" or "" => "none",
-            "mild" => "mild",
-            "moderate" => "moderate",
-            "severe" => "severe",
-            _ => v // tolerate unexpected values
+            BaselineHeartHealthScore = baseline,
+            PlaqueScore = plaqueScore,
+            CardiacPhysiologyScore = physiologyScore,
+            BaselineRiskCategory = baselineCategory.ToString(),
+            VascularHealthStatus = vascularStatus,
+            CardiacPhysiologyStatus = physiologyStatus,
+
+            ModifiableHeartHealthScore = modifiable,
+            SoftPlaqueDelta = delta,
+            HeartHealthScore = total,
+            HeartHealthScoreIsPartial = isPartial,
+
+            RiskExplanation = explanation,
+
+            RiskCategory = legacyRiskCategory,
+            TriggeredByClinicalHistory = triggeredClinical,
+            TriggeredBySevereFinding = trigSevere,
+            TriggeredByModerateFinding = trigModerate,
+            TriggeredByMildFinding = trigMild
         };
     }
 
-    private static string NormQual(string? s)
+    // -----------------------------
+    // Helpers / Scoring
+    // -----------------------------
+    private enum Sev { Unknown = 0, None = 1, Mild = 2, Moderate = 3, Severe = 4 }
+    private enum Qual { Unknown = 0, Low = 1, Moderate = 2, High = 3, Severe = 4 }
+    private enum BaseCat { Low = 0, Mild = 1, Moderate = 2, High = 3 }
+
+    private static Sev ParseSeverity(string? s)
     {
         var v = (s ?? "").Trim().ToLowerInvariant();
+        if (v == "") return Sev.Unknown;
+        if (v.Contains("none") || v == "no" || v == "0") return Sev.None;
+        if (v.Contains("mild")) return Sev.Mild;
+        if (v.Contains("moderate") || v.Contains("mod")) return Sev.Moderate;
+        if (v.Contains("severe") || v.Contains("high")) return Sev.Severe;
+        return Sev.Unknown;
+    }
+
+    private static Qual ParseQual(string? s)
+    {
+        var v = (s ?? "").Trim().ToLowerInvariant();
+        if (v == "") return Qual.Unknown;
         return v switch
         {
-            "" => "",
-            "low" => "low",
-            "moderate" => "moderate",
-            "high" => "high",
-            "severe" => "severe",
-            _ => v
+            "low" => Qual.Low,
+            "moderate" => Qual.Moderate,
+            "high" => Qual.High,
+            "severe" => Qual.Severe,
+            _ => Qual.Unknown
         };
     }
 
-    private static bool IsQualSevere(string qual) => qual is "high" or "severe";
+    private static double? ClampOrNull(double? v, double min, double max)
+    {
+        if (!v.HasValue) return null;
+        if (double.IsNaN(v.Value) || double.IsInfinity(v.Value)) return null;
+        if (v.Value < min) return min;
+        if (v.Value > max) return max;
+        return v.Value;
+    }
+
+    private static int ClampInt(int v, int min, int max) => v < min ? min : (v > max ? max : v);
+
+    private static int ScoreEf(double? efPct)
+    {
+        if (!efPct.HasValue) return 4;
+        var ef = efPct.Value;
+        if (ef > 52) return 4;
+        if (ef >= 45) return 3;
+        if (ef >= 35) return 2;
+        if (ef >= 25) return 1;
+        return 0;
+    }
+
+    private static int ScoreStructure(string? structureSeverity)
+    {
+        var sev = ParseSeverity(structureSeverity);
+        if (sev == Sev.Unknown || sev == Sev.None) return 2;
+        if (sev == Sev.Mild) return 1;
+        return 0;
+    }
+
+    private static int ScoreDuke(double? duke)
+    {
+        if (!duke.HasValue) return 4;
+        var d = duke.Value;
+        if (d >= 5) return 4;
+        if (d >= 0) return 3;
+        if (d >= -5) return 2;
+        if (d >= -10) return 1;
+        return 0;
+    }
+
+    private static int ScoreEcg(string? ecgSeverity)
+    {
+        var v = (ecgSeverity ?? "").Trim().ToLowerInvariant();
+        if (v == "") return 2;
+        if (v.Contains("normal")) return 2;
+        if (v.Contains("lbbb")) return 1;
+        if (v.Contains("mild")) return 1;
+        if (v.Contains("af") || v.Contains("flutter") || v.Contains("moderate")) return 0;
+        return 1;
+    }
+
+    private static BaseCat CategoryFromBaselineScore(int baseline)
+    {
+        if (baseline >= 28) return BaseCat.Low;
+        if (baseline >= 22) return BaseCat.Mild;
+        if (baseline >= 17) return BaseCat.Moderate;
+        return BaseCat.High;
+    }
+
+    private static BaseCat MinCategoryFromEf(double? efPct)
+    {
+        if (!efPct.HasValue) return BaseCat.Low;
+        var ef = efPct.Value;
+        if (ef >= 52) return BaseCat.Low;
+        if (ef >= 45) return BaseCat.Mild;
+        if (ef >= 35) return BaseCat.Moderate;
+        return BaseCat.High;
+    }
+
+    private static BaseCat Max(BaseCat a, BaseCat b, BaseCat c)
+    {
+        var max = a;
+        if (b > max) max = b;
+        if (c > max) max = c;
+        return max;
+    }
+
+    private static int NormalizeSoftPlaqueDelta(int? delta)
+    {
+        if (!delta.HasValue) return 0;
+        return delta.Value switch
+        {
+            -5 => -5,
+            0 => 0,
+            5 => 5,
+            _ => 0
+        };
+    }
+
+    private static int? NormalizeModifiable(int? mod)
+    {
+        if (!mod.HasValue) return null;
+        var v = mod.Value;
+        if (v < 0) v = 0;
+        if (v > 70) v = 70;
+        return v;
+    }
+
+    private static string BuildExplanation(
+        BaseCat baselineCategory,
+        int baselineScore,
+        int plaqueScore,
+        int physiologyScore,
+        string vascularStatus,
+        string physiologyStatus,
+        bool anyPlaque,
+        bool moderatePlusPlaque,
+        bool missingEf,
+        bool missingStructure,
+        bool missingDuke,
+        bool missingEcg,
+        bool triggeredClinicalAscVD
+    )
+    {
+        string catText = baselineCategory switch
+        {
+            BaseCat.Low => "Low baseline risk",
+            BaseCat.Mild => "Mild baseline risk",
+            BaseCat.Moderate => "Moderate baseline risk",
+            BaseCat.High => "High baseline risk",
+            _ => "Baseline risk"
+        };
+
+        string why = $"{catText} based on vascular findings and cardiac physiology. " +
+                     $"Baseline score {baselineScore}/30 (Plaque {plaqueScore}/18, Physiology {physiologyScore}/12). " +
+                     $"Vascular status: {vascularStatus}. Cardiac physiology status: {physiologyStatus}.";
+
+        if (triggeredClinicalAscVD)
+        {
+            why += " Clinical ASCVD history was indicated, which elevates overall concern regardless of imaging score.";
+        }
+
+        int missingCount = (missingEf ? 1 : 0) + (missingStructure ? 1 : 0) + (missingDuke ? 1 : 0) + (missingEcg ? 1 : 0);
+        if (missingCount >= 3)
+        {
+            why += " Note: detailed cardiac physiology inputs (EF/structure/Duke/ECG) were not fully provided, so physiology scoring may be incomplete.";
+        }
+
+        if (!anyPlaque)
+            why += " No imaging evidence of plaque was detected in the provided inputs.";
+        else if (moderatePlusPlaque)
+            why += " Moderate-or-greater plaque criteria were met (e.g., moderate plaque, CAC percentile >25, or CTA stenosis ≥25%).";
+
+        return why;
+    }
 }
-
