@@ -84,7 +84,8 @@ public static class ToxinsLifestyle
             ));
         }
 
-        double? alcoholPerWeek = inputs.AlcoholDrinksPerWeek ?? ParseDrinksPerWeek(inputs.AlcoholIntake);
+        double? alcoholPerWeek = ParseDrinksPerWeek(inputs.AlcoholDrinksPerWeek)
+            ?? ParseDrinksPerWeek(inputs.AlcoholIntake);
         if (alcoholPerWeek.HasValue && alcoholPerWeek.Value > 7)
         {
             exposures.Add(new Exposure(
