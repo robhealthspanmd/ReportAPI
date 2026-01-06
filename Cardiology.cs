@@ -4,6 +4,50 @@ using System.Text.Json.Serialization;
 public static class Cardiology
 {
     // -----------------------------
+    // Modifiable Heart Health (0–70)
+    // -----------------------------
+    public static int? CalculateModifiableHeartHealthScore(
+        HealthAge.Inputs health,
+        PerformanceAge.Inputs performance,
+        PhenoAge.Inputs pheno,
+        Inputs cardio)
+    {
+        if (health is null || performance is null || pheno is null || cardio is null)
+            return null;
+
+        int? bpScore = ScoreBloodPressure(health.SystolicBP, health.DiastolicBP);
+        int? nonHdlScore = ScoreNonHdl(health.NonHdlMgDl, cardio.CoronaryPlaqueSeverity);
+        int? homaScore = ScoreHomaIr(GetHomaIr(health));
+        int? fitnessScore = ScoreFitnessPercentile(performance.Vo2MaxPercentile);
+        int? visceralFatScore = ScoreVisceralFatPercentile(health.VisceralFatPercentile);
+        int? leanToFatScore = ScoreLeanToFatRatio(
+            health.Sex,
+            health.TotalLeanMassPerHeight,
+            health.TotalFatMassPerHeight,
+            health.TotalLeanMass,
+            health.TotalFatMass);
+        int? crpScore = ScoreHsCrp(pheno.CRP_mg_L);
+
+        if (!bpScore.HasValue ||
+            !nonHdlScore.HasValue ||
+            !homaScore.HasValue ||
+            !fitnessScore.HasValue ||
+            !visceralFatScore.HasValue ||
+            !leanToFatScore.HasValue ||
+            !crpScore.HasValue)
+        {
+            return null;
+        }
+
+        return bpScore.Value +
+               nonHdlScore.Value +
+               homaScore.Value +
+               fitnessScore.Value +
+               visceralFatScore.Value +
+               leanToFatScore.Value +
+               crpScore.Value;
+    }
+    // -----------------------------
     // INPUTS (matches frontend payload)
     // -----------------------------
     public sealed record Inputs
@@ -101,12 +145,9 @@ public static class Cardiology
         [JsonPropertyName("ecgSeverity")]
         public string? EcgSeverity { get; init; }               // "normal" | "mild" | "moderate" (AF/flutter) | "lbbb"
 
-        // Optional: modifiable and delta inputs, if another layer computes them upstream.
+        // Optional: modifiable inputs, if another layer computes them upstream.
         [JsonPropertyName("modifiableHeartHealthScore")]
         public int? ModifiableHeartHealthScore { get; init; }   // 0–70
-
-        [JsonPropertyName("softPlaqueDelta")]
-        public int? SoftPlaqueDelta { get; init; }              // −5 / 0 / +5
     }
 
     // -----------------------------
@@ -123,8 +164,7 @@ public static class Cardiology
         public string CardiacPhysiologyStatus { get; init; } = "Unknown";
 
         public int? ModifiableHeartHealthScore { get; init; }       // 0–70 (optional at this layer)
-        public int SoftPlaqueDelta { get; init; }                   // −5 / 0 / +5
-        public int HeartHealthScore { get; init; }                  // Baseline(0–30) + Modifiable(0–70) + Delta, clamped 0–100
+        public int HeartHealthScore { get; init; }                  // Baseline(0–30) + Modifiable(0–70), clamped 0–100
         public bool HeartHealthScoreIsPartial { get; init; }        // true if ModifiableHeartHealthScore missing at this layer
 
         public string RiskExplanation { get; init; } = "";
@@ -220,12 +260,11 @@ public static class Cardiology
             physiologyStatus = "High concern physiology";
 
         // ---- Heart Health Score (0–100) ----
-        // Per spec: HeartHealthScore = Baseline(0–30) + Modifiable(0–70) + SoftPlaqueDelta (−5/0/+5), clamped 0–100.
-        int delta = NormalizeSoftPlaqueDelta(x.SoftPlaqueDelta);
+        // Per spec: HeartHealthScore = Baseline(0–30) + Modifiable(0–70), clamped 0–100.
         int? modifiable = NormalizeModifiable(x.ModifiableHeartHealthScore);
 
         bool isPartial = !modifiable.HasValue;
-        int total = ClampInt(baseline + (modifiable ?? 0) + delta, 0, 100);
+        int total = ClampInt(baseline + (modifiable ?? 0), 0, 100);
 
         // ---- v1 compatibility mapping ----
         // Keep the old SEVERE behavior for "clinical ASCVD history" so the existing narrative stays consistent.
@@ -272,7 +311,6 @@ public static class Cardiology
             CardiacPhysiologyStatus = physiologyStatus,
 
             ModifiableHeartHealthScore = modifiable,
-            SoftPlaqueDelta = delta,
             HeartHealthScore = total,
             HeartHealthScoreIsPartial = isPartial,
 
@@ -396,18 +434,6 @@ public static class Cardiology
         return max;
     }
 
-    private static int NormalizeSoftPlaqueDelta(int? delta)
-    {
-        if (!delta.HasValue) return 0;
-        return delta.Value switch
-        {
-            -5 => -5,
-            0 => 0,
-            5 => 5,
-            _ => 0
-        };
-    }
-
     private static int? NormalizeModifiable(int? mod)
     {
         if (!mod.HasValue) return null;
@@ -415,6 +441,171 @@ public static class Cardiology
         if (v < 0) v = 0;
         if (v > 70) v = 70;
         return v;
+    }
+
+    private static int? ScoreBloodPressure(double? systolic, double? diastolic)
+    {
+        if (!systolic.HasValue || !diastolic.HasValue)
+            return null;
+
+        double sys = systolic.Value;
+        double dia = diastolic.Value;
+
+        if (sys < 120 && dia < 80) return 10;
+        if (sys >= 120 && sys <= 129 && dia < 80) return 7;
+        if ((sys >= 130 && sys <= 139) || (dia >= 80 && dia <= 89)) return 4;
+        if (sys >= 140 || dia >= 90) return 0;
+
+        return null;
+    }
+
+    private static int? ScoreNonHdl(double? nonHdlMgDl, string? coronaryPlaqueSeverity)
+    {
+        if (!nonHdlMgDl.HasValue)
+            return null;
+
+        var riskCategory = MapPlaqueRiskCategory(coronaryPlaqueSeverity);
+        if (riskCategory is null)
+            return null;
+
+        double nonHdl = nonHdlMgDl.Value;
+
+        return riskCategory switch
+        {
+            PlaqueRiskCategory.Low => nonHdl < 100 ? 10 :
+                                      nonHdl <= 129 ? 7 :
+                                      nonHdl <= 159 ? 4 : 0,
+            PlaqueRiskCategory.Intermediate => nonHdl < 90 ? 10 :
+                                               nonHdl <= 119 ? 7 :
+                                               nonHdl <= 149 ? 4 : 0,
+            PlaqueRiskCategory.High => nonHdl < 60 ? 10 :
+                                        nonHdl <= 89 ? 7 :
+                                        nonHdl <= 119 ? 4 : 0,
+            _ => null
+        };
+    }
+
+    private static int? ScoreHomaIr(double? homaIr)
+    {
+        if (!homaIr.HasValue)
+            return null;
+
+        double homa = homaIr.Value;
+        if (homa < 1.0) return 10;
+        if (homa <= 2.0) return 7;
+        if (homa <= 3.0) return 4;
+        return 0;
+    }
+
+    private static int? ScoreFitnessPercentile(double? fitnessPercentile)
+    {
+        if (!fitnessPercentile.HasValue)
+            return null;
+
+        double pct = fitnessPercentile.Value;
+        if (pct > 97.5) return 10;
+        if (pct >= 75) return 7;
+        if (pct >= 50) return 4;
+        return 0;
+    }
+
+    private static int? ScoreVisceralFatPercentile(double? visceralFatPercentile)
+    {
+        if (!visceralFatPercentile.HasValue)
+            return null;
+
+        double pct = visceralFatPercentile.Value;
+        if (pct < 25) return 10;
+        if (pct <= 49) return 7;
+        if (pct <= 74) return 4;
+        return 0;
+    }
+
+    private static int? ScoreLeanToFatRatio(
+        string? sex,
+        double? leanMassPerHeight,
+        double? fatMassPerHeight,
+        double? leanMass,
+        double? fatMass)
+    {
+        if (string.IsNullOrWhiteSpace(sex))
+            return null;
+
+        double? ratio = null;
+        if (leanMassPerHeight.HasValue && fatMassPerHeight.HasValue && fatMassPerHeight.Value != 0)
+            ratio = leanMassPerHeight.Value / fatMassPerHeight.Value;
+        else if (leanMass.HasValue && fatMass.HasValue && fatMass.Value != 0)
+            ratio = leanMass.Value / fatMass.Value;
+
+        if (!ratio.HasValue)
+            return null;
+
+        bool isMale = sex.Trim().Equals("male", StringComparison.OrdinalIgnoreCase);
+
+        if (isMale)
+        {
+            if (ratio.Value >= 3.2) return 10;
+            if (ratio.Value >= 2.2) return 7;
+            if (ratio.Value >= 1.4) return 4;
+            return 0;
+        }
+
+        if (ratio.Value >= 2.6) return 10;
+        if (ratio.Value >= 1.8) return 7;
+        if (ratio.Value >= 1.2) return 4;
+        return 0;
+    }
+
+    private static int? ScoreHsCrp(double? crpMgL)
+    {
+        if (!crpMgL.HasValue)
+            return null;
+
+        double crp = crpMgL.Value;
+        if (crp < 1.0) return 10;
+        if (crp < 2.0) return 7;
+        if (crp < 3.0) return 4;
+        return 0;
+    }
+
+    private static double? GetHomaIr(HealthAge.Inputs health)
+    {
+        if (health.HomaIr.HasValue)
+            return health.HomaIr.Value;
+
+        if (health.FastingGlucose_mg_dL.HasValue &&
+            health.FastingInsulin_uIU_mL.HasValue &&
+            health.FastingGlucose_mg_dL.Value != 0)
+        {
+            return health.FastingGlucose_mg_dL.Value *
+                   health.FastingInsulin_uIU_mL.Value /
+                   405.0;
+        }
+
+        return null;
+    }
+
+    private enum PlaqueRiskCategory
+    {
+        Low,
+        Intermediate,
+        High
+    }
+
+    private static PlaqueRiskCategory? MapPlaqueRiskCategory(string? coronaryPlaqueSeverity)
+    {
+        if (string.IsNullOrWhiteSpace(coronaryPlaqueSeverity))
+            return null;
+
+        string severity = coronaryPlaqueSeverity.Trim().ToLowerInvariant();
+        return severity switch
+        {
+            "none" => PlaqueRiskCategory.Low,
+            "mild" => PlaqueRiskCategory.Intermediate,
+            "moderate" => PlaqueRiskCategory.High,
+            "severe" => PlaqueRiskCategory.High,
+            _ => null
+        };
     }
 
     private static string BuildExplanation(
