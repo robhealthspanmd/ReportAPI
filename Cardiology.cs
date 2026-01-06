@@ -80,6 +80,9 @@ public static class Cardiology
         [JsonPropertyName("echoOverallResult")]
         public string? EchoOverallResult { get; init; }         // "low" | "moderate" | "high" | "severe" (free text allowed)
 
+        [JsonPropertyName("echoDetails")]
+        public string? EchoDetails { get; init; }
+
         // Clinical history (legacy + used for "SEVERE" override in v1 behavior)
         [JsonPropertyName("hasClinicalAscVDHistory")]
         public bool? HasClinicalAscVDHistory { get; init; }
