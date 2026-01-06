@@ -6,14 +6,7 @@ using System.Text.RegularExpressions;
 
 public static class ToxinsLifestyle
 {
-    public sealed record LabResult(
-        double? Value,
-        string? Units,
-        string? CollectedDate,
-        string? ReferenceRange,
-        string? Flag
-    );
-
+    // NOTE: Numeric-only lab inputs for blood lead/mercury (no object wrapper).
     public sealed record Inputs(
         string? AlcoholIntake,
         string? AlcoholDrinksPerWeek,
