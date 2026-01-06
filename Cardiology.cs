@@ -145,12 +145,9 @@ public static class Cardiology
         [JsonPropertyName("ecgSeverity")]
         public string? EcgSeverity { get; init; }               // "normal" | "mild" | "moderate" (AF/flutter) | "lbbb"
 
-        // Optional: modifiable and delta inputs, if another layer computes them upstream.
+        // Optional: modifiable inputs, if another layer computes them upstream.
         [JsonPropertyName("modifiableHeartHealthScore")]
         public int? ModifiableHeartHealthScore { get; init; }   // 0–70
-
-        [JsonPropertyName("softPlaqueDelta")]
-        public int? SoftPlaqueDelta { get; init; }              // −5 / 0 / +5
     }
 
     // -----------------------------
@@ -167,8 +164,7 @@ public static class Cardiology
         public string CardiacPhysiologyStatus { get; init; } = "Unknown";
 
         public int? ModifiableHeartHealthScore { get; init; }       // 0–70 (optional at this layer)
-        public int SoftPlaqueDelta { get; init; }                   // −5 / 0 / +5
-        public int HeartHealthScore { get; init; }                  // Baseline(0–30) + Modifiable(0–70) + Delta, clamped 0–100
+        public int HeartHealthScore { get; init; }                  // Baseline(0–30) + Modifiable(0–70), clamped 0–100
         public bool HeartHealthScoreIsPartial { get; init; }        // true if ModifiableHeartHealthScore missing at this layer
 
         public string RiskExplanation { get; init; } = "";
@@ -264,12 +260,11 @@ public static class Cardiology
             physiologyStatus = "High concern physiology";
 
         // ---- Heart Health Score (0–100) ----
-        // Per spec: HeartHealthScore = Baseline(0–30) + Modifiable(0–70) + SoftPlaqueDelta (−5/0/+5), clamped 0–100.
-        int delta = NormalizeSoftPlaqueDelta(x.SoftPlaqueDelta);
+        // Per spec: HeartHealthScore = Baseline(0–30) + Modifiable(0–70), clamped 0–100.
         int? modifiable = NormalizeModifiable(x.ModifiableHeartHealthScore);
 
         bool isPartial = !modifiable.HasValue;
-        int total = ClampInt(baseline + (modifiable ?? 0) + delta, 0, 100);
+        int total = ClampInt(baseline + (modifiable ?? 0), 0, 100);
 
         // ---- v1 compatibility mapping ----
         // Keep the old SEVERE behavior for "clinical ASCVD history" so the existing narrative stays consistent.
@@ -316,7 +311,6 @@ public static class Cardiology
             CardiacPhysiologyStatus = physiologyStatus,
 
             ModifiableHeartHealthScore = modifiable,
-            SoftPlaqueDelta = delta,
             HeartHealthScore = total,
             HeartHealthScoreIsPartial = isPartial,
 
@@ -438,18 +432,6 @@ public static class Cardiology
         if (b > max) max = b;
         if (c > max) max = c;
         return max;
-    }
-
-    private static int NormalizeSoftPlaqueDelta(int? delta)
-    {
-        if (!delta.HasValue) return 0;
-        return delta.Value switch
-        {
-            -5 => -5,
-            0 => 0,
-            5 => 5,
-            _ => 0
-        };
     }
 
     private static int? NormalizeModifiable(int? mod)
