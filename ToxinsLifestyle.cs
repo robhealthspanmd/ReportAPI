@@ -16,7 +16,7 @@ public static class ToxinsLifestyle
 
     public sealed record Inputs(
         string? AlcoholIntake,
-        double? AlcoholDrinksPerWeek,
+        string? AlcoholDrinksPerWeek,
         string? Smoking,
         string? ChewingTobacco,
         string? Vaping,
@@ -28,33 +28,8 @@ public static class ToxinsLifestyle
         string? PhysicalEnvironmentImpact,
         string? MediaExposureImpact,
         string? StressfulEnvironmentsOrRelationshipsImpact,
-        LabResult? BloodLeadLevel,
-        LabResult? BloodMercury
-    );
-
-    public sealed record Exposure(
-        string Key,
-        string Label,
-        string Source,
-        string Trigger,
-        bool StressAmplified
-    );
-
-    public sealed record Opportunity(
-        string Key,
-        string Label,
-        string Recommendation,
-        IReadOnlyList<string>? NextSteps = null,
-        IReadOnlyList<string>? EscalationGuidance = null,
-        string? Notes = null
-    );
-
-    public sealed record Result(
-        string OverallStatus,
-        string Summary,
-        IReadOnlyList<Exposure> IdentifiedExposures,
-        IReadOnlyList<Opportunity> Opportunities,
-        bool StressPhysiologyReferenced
+        double? BloodLeadLevel,
+        double? BloodMercury
     );
 
     public static Result Evaluate(Inputs? inputs, double? perceivedStressScore)
