@@ -6,6 +6,34 @@ using System.Text.RegularExpressions;
 
 public static class ToxinsLifestyle
 {
+    private const double LeadUpperLimit = 3.5;
+    private const double MercuryUpperLimit = 10.0;
+
+    public sealed record Exposure(
+        string Key,
+        string Label,
+        string Category,
+        string Details,
+        bool Amplified
+    );
+
+    public sealed record Opportunity(
+        string Key,
+        string Label,
+        string Summary,
+        IEnumerable<string>? NextSteps = null,
+        IEnumerable<string>? Notes = null,
+        string? AdditionalNote = null
+    );
+
+    public sealed record Result(
+        string OverallStatus,
+        string Summary,
+        IReadOnlyList<Exposure> Exposures,
+        IReadOnlyList<Opportunity> Opportunities,
+        bool StressAmplified
+    );
+
     // NOTE: Numeric-only lab inputs for blood lead/mercury (no object wrapper).
     public sealed record Inputs(
         string? AlcoholIntake,
@@ -196,7 +224,7 @@ public static class ToxinsLifestyle
             ));
         }
 
-        if (IsLabExposure(inputs.BloodLeadLevel))
+        if (IsLabExposure(inputs.BloodLeadLevel, LeadUpperLimit))
         {
             exposures.Add(new Exposure(
                 "lead",
@@ -224,7 +252,7 @@ public static class ToxinsLifestyle
             ));
         }
 
-        if (IsLabExposure(inputs.BloodMercury))
+        if (IsLabExposure(inputs.BloodMercury, MercuryUpperLimit))
         {
             exposures.Add(new Exposure(
                 "mercury",
@@ -312,51 +340,14 @@ public static class ToxinsLifestyle
         return IsSubjectiveExposure(value);
     }
 
-    private static bool IsLabExposure(LabResult? lab)
+    private static bool IsLabExposure(double? value, double upperLimit)
     {
-        if (lab is null)
+        if (!value.HasValue)
         {
             return false;
         }
 
-        if (!string.IsNullOrWhiteSpace(lab.Flag)
-            && lab.Flag.Trim().Equals("high", StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        if (lab.Value.HasValue)
-        {
-            var upperLimit = ParseUpperLimit(lab.ReferenceRange);
-            if (upperLimit.HasValue && lab.Value.Value > upperLimit.Value)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static double? ParseUpperLimit(string? referenceRange)
-    {
-        if (string.IsNullOrWhiteSpace(referenceRange))
-        {
-            return null;
-        }
-
-        var matches = Regex.Matches(referenceRange, @"-?\d+(\.\d+)?");
-        if (matches.Count == 0)
-        {
-            return null;
-        }
-
-        var values = matches
-            .Select(match => double.TryParse(match.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) ? parsed : (double?)null)
-            .Where(value => value.HasValue)
-            .Select(value => value!.Value)
-            .ToList();
-
-        return values.Count == 0 ? null : values.Max();
+        return value.Value > upperLimit;
     }
 
     private static double? ParseDrinksPerWeek(string? input)
