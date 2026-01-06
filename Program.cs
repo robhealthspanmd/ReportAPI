@@ -145,11 +145,22 @@ app.MapPost("/api/report.json", async (HttpContext http) =>
         return Results.BadRequest(new { error = "Invalid JSON body." });
     }
 
-    // 2) Deserialize into existing ReportRequest contract (extra fields will be ignored here)
+    // 2) Normalize incoming JSON to align UI field names with backend contracts
+    JsonDocument normalizedDoc;
+    try
+    {
+        normalizedDoc = NormalizeReportJson(root);
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { error = "Could not normalize request.", details = ex.Message });
+    }
+
+    // 3) Deserialize into existing ReportRequest contract (extra fields will be ignored here)
     ReportRequest req;
     try
     {
-        req = JsonSerializer.Deserialize<ReportRequest>(root.GetRawText(), new JsonSerializerOptions
+        req = JsonSerializer.Deserialize<ReportRequest>(normalizedDoc.RootElement.GetRawText(), new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
         }) ?? throw new InvalidOperationException("Request deserialized to null.");
@@ -159,10 +170,10 @@ app.MapPost("/api/report.json", async (HttpContext http) =>
         return Results.BadRequest(new { error = "Could not deserialize request.", details = ex.Message });
     }
 
-    // 3) Pull extra performance fields out of the raw JSON (so we keep what the UI sends)
-    var perfExtras = ExtractPerformanceExtras(root);
+    // 4) Pull extra performance fields out of the raw JSON (so we keep what the UI sends)
+    var perfExtras = ExtractPerformanceExtras(normalizedDoc.RootElement);
 
-    // 4) Run deterministic calculators (same as before)
+    // 5) Run deterministic calculators (same as before)
     var pheno = PhenoAge.Calculate(req.PhenoAge);
 
     var healthInputs = req.HealthAge with { PhenotypicAgeYears = pheno.PhenotypicAgeYears };
@@ -197,7 +208,17 @@ app.MapPost("/api/report.json", async (HttpContext http) =>
 
     var brain = BrainHealth.Calculate(req.BrainHealth);
 
-    var cardio = req.Cardiology is null ? null : Cardiology.Calculate(req.Cardiology);
+    Cardiology.Result? cardio = null;
+    if (req.Cardiology is not null)
+    {
+        var modifiableScore = Cardiology.CalculateModifiableHeartHealthScore(
+            req.HealthAge,
+            req.PerformanceAge,
+            req.PhenoAge,
+            req.Cardiology);
+        var cardioInputs = req.Cardiology with { ModifiableHeartHealthScore = modifiableScore };
+        cardio = Cardiology.Calculate(cardioInputs);
+    }
 
     // 6) Strategy engine (deterministic; only emits strategies if there are triggers)
     var perfStrategy = PhysicalPerformanceStrategyEngine.Generate(req.PerformanceAge, performance);
@@ -307,26 +328,26 @@ static PerformanceExtras ExtractPerformanceExtras(JsonElement root)
 
     return new PerformanceExtras
     {
-        Vo2Max = ReadDouble(perfObj, "vo2Max"),
-        HeartRateRecovery = ReadDouble(perfObj, "heartRateRecovery"),
-        FloorToStandTest = ReadString(perfObj, "floorToStandTest"),
-        TrunkEndurance = ReadString(perfObj, "trunkEndurance"),
-        PostureAssessment = ReadString(perfObj, "postureAssessment"),
-        HipStrength = ReadString(perfObj, "hipStrength"),
-        CalfStrength = ReadString(perfObj, "calfStrength"),
-        RotatorCuffIntegrity = ReadString(perfObj, "rotatorCuffIntegrity"),
-        IsometricThighPull = ReadDouble(perfObj, "isometricThighPull"),
+        Vo2Max = ReadDoubleAny(perfObj, "vo2Max", "vo2MaxValue"),
+        HeartRateRecovery = ReadDoubleAny(perfObj, "heartRateRecovery", "hrrBpmDrop"),
+        FloorToStandTest = ReadStringAny(perfObj, "floorToStandTest", "floorToStandScore"),
+        TrunkEndurance = ReadStringAny(perfObj, "trunkEndurance", "trunkEndurancePercentile"),
+        PostureAssessment = ReadStringAny(perfObj, "postureAssessment", "tragusToWallDistance"),
+        HipStrength = ReadStringAny(perfObj, "hipStrength", "hipStrengthPercentile"),
+        CalfStrength = ReadStringAny(perfObj, "calfStrength", "calfStrengthPercentile"),
+        RotatorCuffIntegrity = ReadStringAny(perfObj, "rotatorCuffIntegrity", "rotatorCuffLowestPercentile"),
+        IsometricThighPull = ReadDoubleAny(perfObj, "isometricThighPull", "imtpForceValue"),
 
         // Spec-expansion fields (optional)
-        MobilityRom = ReadString(perfObj, "mobilityRom"),
-        BalanceAssessment = ReadString(perfObj, "balanceAssessment"),
-        ChairRiseFiveTimes = ReadString(perfObj, "chairRiseFiveTimes"),
-        ChairRiseThirtySeconds = ReadString(perfObj, "chairRiseThirtySeconds"),
-        QuadricepsAsymmetryPercent = ReadDouble(perfObj, "quadricepsAsymmetryPercent"),
-        HipAsymmetryPercent = ReadDouble(perfObj, "hipAsymmetryPercent"),
-        CalfAsymmetryPercent = ReadDouble(perfObj, "calfAsymmetryPercent"),
-        IsometricThighPullPercentile = ReadDouble(perfObj, "isometricThighPullPercentile"),
-        RotatorCuffLowestMusclePercentile = ReadDouble(perfObj, "rotatorCuffLowestMusclePercentile")
+        MobilityRom = ReadStringAny(perfObj, "mobilityRom", "restrictedMotionPresent"),
+        BalanceAssessment = ReadStringAny(perfObj, "balanceAssessment", "ctsibHoldTime", "unableToCompleteCtsib"),
+        ChairRiseFiveTimes = ReadStringAny(perfObj, "chairRiseFiveTimes", "sitToStand5xTime"),
+        ChairRiseThirtySeconds = ReadStringAny(perfObj, "chairRiseThirtySeconds", "sitToStand30secReps"),
+        QuadricepsAsymmetryPercent = ReadDoubleAny(perfObj, "quadricepsAsymmetryPercent", "quadAsymmetryPercent"),
+        HipAsymmetryPercent = ReadDoubleAny(perfObj, "hipAsymmetryPercent"),
+        CalfAsymmetryPercent = ReadDoubleAny(perfObj, "calfAsymmetryPercent"),
+        IsometricThighPullPercentile = ReadDoubleAny(perfObj, "isometricThighPullPercentile", "imtpPercentile"),
+        RotatorCuffLowestMusclePercentile = ReadDoubleAny(perfObj, "rotatorCuffLowestMusclePercentile", "rotatorCuffLowestPercentile")
     };
 }
 
@@ -362,6 +383,17 @@ static double? ReadDouble(JsonElement obj, string name)
     return null;
 }
 
+static double? ReadDoubleAny(JsonElement obj, params string[] names)
+{
+    foreach (var name in names)
+    {
+        var value = ReadDouble(obj, name);
+        if (value.HasValue)
+            return value.Value;
+    }
+    return null;
+}
+
 static string? ReadString(JsonElement obj, string name)
 {
     if (!TryGetPropertyCaseInsensitive(obj, name, out var v))
@@ -376,6 +408,51 @@ static string? ReadString(JsonElement obj, string name)
         JsonValueKind.Null => null,
         _ => v.GetRawText()
     };
+}
+
+static string? ReadStringAny(JsonElement obj, params string[] names)
+{
+    foreach (var name in names)
+    {
+        var value = ReadString(obj, name);
+        if (!string.IsNullOrWhiteSpace(value))
+            return value;
+    }
+    return null;
+}
+
+static JsonDocument NormalizeReportJson(JsonElement root)
+{
+    var node = JsonNode.Parse(root.GetRawText()) as JsonObject;
+    if (node is null)
+        return JsonDocument.Parse(root.GetRawText());
+
+    NormalizePerformanceAge(node);
+    return JsonDocument.Parse(node.ToJsonString());
+}
+
+static void NormalizePerformanceAge(JsonObject root)
+{
+    if (!root.TryGetPropertyValue("performanceAge", out var perfNode) ||
+        perfNode is not JsonObject perfObj)
+    {
+        return;
+    }
+
+    CopyIfMissing(perfObj, "quadricepsStrengthPercentile", "quadStrengthPercentile");
+    CopyIfMissing(perfObj, "gaitSpeedComfortablePercentile", "comfortableGaitSpeedPercentile");
+    CopyIfMissing(perfObj, "gaitSpeedMaxPercentile", "maximalGaitSpeedPercentile");
+}
+
+static void CopyIfMissing(JsonObject obj, string target, string source)
+{
+    if (obj.ContainsKey(target))
+        return;
+
+    if (obj.TryGetPropertyValue(source, out var value) && value is not null)
+    {
+        obj[target] = value.DeepClone();
+    }
 }
 
 sealed class PerformanceExtras
