@@ -9,6 +9,31 @@ public static class ToxinsLifestyle
     private const double LeadUpperLimit = 3.5;
     private const double MercuryUpperLimit = 10.0;
 
+    public sealed record Exposure(
+        string Key,
+        string Label,
+        string Category,
+        string Details,
+        bool Amplified
+    );
+
+    public sealed record Opportunity(
+        string Key,
+        string Label,
+        string Summary,
+        IEnumerable<string>? NextSteps = null,
+        IEnumerable<string>? Notes = null,
+        string? AdditionalNote = null
+    );
+
+    public sealed record Result(
+        string OverallStatus,
+        string Summary,
+        IReadOnlyList<Exposure> Exposures,
+        IReadOnlyList<Opportunity> Opportunities,
+        bool StressAmplified
+    );
+
     // NOTE: Numeric-only lab inputs for blood lead/mercury (no object wrapper).
     public sealed record Inputs(
         string? AlcoholIntake,
