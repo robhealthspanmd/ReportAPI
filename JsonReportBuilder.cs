@@ -19,7 +19,9 @@ public static class JsonReportBuilder
         string cardiologyInterpretationParagraph,
         AiInsights.MetabolicHealthAiResult? metabolicAi,
         object? metabolicAiInput = null,
-        PhysicalPerformanceStrategyEngine.Response? physicalPerformanceStrategyEngine = null
+        PhysicalPerformanceStrategyEngine.Response? physicalPerformanceStrategyEngine = null,
+        AiInsights.ClinicalPreventiveChecklistResult? clinicalPreventiveChecklist = null,
+        object? clinicalPreventiveChecklistInput = null
     )
     {
         // Keep output stable + frontend-friendly.
@@ -102,7 +104,9 @@ public static class JsonReportBuilder
                 improvementParagraph = improvementParagraph ?? string.Empty,
                 cardiologyInterpretationParagraph = cardiologyInterpretationParagraph ?? string.Empty,
                 metabolicAssessment = metabolicAi,
-                metabolicAssessmentInput = metabolicAiInput
+                metabolicAssessmentInput = metabolicAiInput,
+                clinicalPreventiveChecklist = clinicalPreventiveChecklist,
+                clinicalPreventiveChecklistInput = clinicalPreventiveChecklistInput
             }
         };
 

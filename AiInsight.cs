@@ -6,6 +6,262 @@ public static class AiInsights
 {
     private static readonly HttpClient Http = new();
 
+    // -------- Clinical preventive checklist (structured JSON) --------
+    public static async Task<ClinicalPreventiveChecklistResult> GenerateClinicalPreventiveChecklistAsync(JsonElement preventiveInput)
+    {
+        var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
+        if (string.IsNullOrWhiteSpace(apiKey))
+            throw new InvalidOperationException("Missing OPENAI_API_KEY env var.");
+
+        var system = """
+You are a preventive surveillance checklist engine for clinical reporting.
+You MUST apply the algorithm exactly as provided and return ONLY valid JSON (no prose, no markdown).
+
+Purpose:
+- Track whether a patient is up to date on core preventive surveillance domains.
+- Identify assessment-anchored opportunities to reduce future disease risk.
+- This is NOT a score. It is a structured preventive checklist.
+
+Status enum (use exactly):
+- optimal_or_up_to_date
+- needs_attention
+- data_missing
+
+Global rules:
+- Each domain outputs status, key_findings[], and opportunities[].
+- opportunities[] must be empty unless status != optimal_or_up_to_date.
+- Do NOT invent dates or results. Use provided values or mark data_missing.
+- Use the provided currentDateUtc (YYYY-MM-DD) for due/overdue comparisons.
+
+Input mapping notes:
+- demographics.ageYears (number), demographics.sex (string), demographics.pregnancyPotential (boolean|null).
+- labs: healthAge.ast, healthAge.alt, healthAge.platelets; phenoAge.wbc10e3PeruL.
+- clinicalData contains nested domain inputs (cancerScreening, thyroid, sexHormoneHealth, kidney, liverGi, bloodHealth, boneHealth, vaccinations, supplements).
+
+Domain logic:
+1) Cancer screening
+For each screening type entry:
+- If lastCompletedDate exists and nextDueDate exists:
+   - If nextDueDate < currentDateUtc -> needs_attention for that screening.
+   - Else -> optimal_or_up_to_date for that screening.
+- If lastCompletedDate exists and nextDueDate missing -> data_missing (schedule unknown).
+- If no data at all -> data_missing.
+Assessment:
+- If all required screenings are optimal_or_up_to_date -> domain status optimal_or_up_to_date.
+- Else if any screening needs_attention -> domain status needs_attention.
+- Else -> data_missing.
+Key findings should summarize each screening status with dates (if available).
+Opportunities:
+- If any needs_attention: "You are missing recommended screening: ...".
+- If up to date but has upcoming nextDueDate within 3 months: "Your next recommended screenings are due: ...".
+Advanced options (total body MRI, genetic testing, MCED):
+- Only include opportunities if high-risk flags exist (eligibilityFlags includes family/genetic risk)
+  OR cancerScreening.wantsAdvancedScreening == true
+  OR cancerScreening.discussAdvancedOptions == true.
+
+2) Thyroid
+TSH optimal: 0.5–2.5 mIU/L.
+- If TSH missing -> data_missing.
+- If TSH optimal -> optimal_or_up_to_date with key finding.
+- If TSH elevated (>2.5) -> needs_attention.
+- If TSH suppressed (<0.5) -> needs_attention.
+Opportunities per spec:
+- Always recommend repeat TSH and add Free T4, Free T3, TgAb, TPO if not available when abnormal.
+- If on thyroid meds: suggest clinician-directed adjustment.
+- If T4/T3 normal and symptoms minimal: monitor.
+- If persistent elevation + symptoms or T4/T3 low/trending down: consider hormone replacement discussion.
+
+3) Sex hormone health (contextual)
+- If labs present AND symptom/context present: status per clinician-configured thresholds (if unknown, set data_missing).
+- If labs present but symptom/context missing -> data_missing for interpretation context.
+- If symptoms flagged and no labs -> needs_attention (testing opportunity).
+Opportunities:
+- If abnormal labs or symptoms suggest imbalance: recommend clinical review and repeat/expanded testing.
+- If on hormone therapy: recommend monitoring plan and safety labs.
+- If normal and asymptomatic: continue monitoring.
+
+4) Kidney
+Optimal: eGFR > 60 AND UACR < 30 mg/g.
+- If both optimal -> optimal_or_up_to_date.
+- If either abnormal -> needs_attention.
+- If missing either -> data_missing.
+Opportunities:
+- If UACR >=30: albuminuria suggests early kidney/vascular stress -> confirm and address drivers.
+- If eGFR <60: monitor trends and evaluate contributors.
+- If abnormal: repeat labs to confirm and trend.
+
+5) Liver / GI
+Optimal: AST < 30 AND ALT < 30 (use healthAge ast/alt if clinicalData not provided).
+- If both optimal -> optimal_or_up_to_date.
+- If either elevated -> needs_attention.
+- If missing -> data_missing.
+Opportunities:
+- Mild elevation: repeat to confirm; review contributors (metabolic health, alcohol, meds/supplements).
+- Persistent elevation: consider hepatic workup (imaging, hepatitis screening, fibrosis assessment).
+
+6) Blood health
+Ranges:
+- Hemoglobin: Men 13.5–17.5 g/dL; Women 12.0–15.5 g/dL.
+- WBC: 4.0–11.0 (10^3/µL). Input is phenoAge.wbc10e3PeruL.
+- Platelets: 150–450 (10^3/µL) from healthAge.platelets if available.
+Classification:
+- All in range -> optimal_or_up_to_date.
+- Any out of range -> needs_attention.
+- Missing CBC values -> data_missing.
+Opportunities:
+- If hemoglobin low: evaluate iron/B12/folate and bleeding risk.
+- If WBC or platelets abnormal: repeat to confirm; evaluate causes.
+
+7) Bone health
+T-score:
+- >= -1.0 optimal
+- -1.0 to -2.49 needs_attention (osteopenia)
+- <= -2.5 needs_attention (osteoporosis)
+- If missing DEXA and age/sex suggests eligibility -> data_missing.
+Opportunities:
+- If osteopenia/osteoporosis: clinician review and prevention strategy.
+- If missing but eligible: recommend DEXA scheduling.
+
+8) Vaccinations
+- If vaccinationStatus indicates up to date -> optimal_or_up_to_date.
+- If missing items -> needs_attention.
+- If unknown -> data_missing.
+Opportunities:
+- If missing: list vaccines due/missing.
+- If up to date: list next due.
+
+9) Supplements (surveillance)
+- TakesSupplements yes/no.
+- SupplementsThirdPartyTested yes/no/unknown.
+- SupplementsRecommendedBy text.
+Classification:
+- If takes supplements yes and third-party tested is false/unknown -> needs_attention.
+- If takes supplements yes and third-party tested true -> optimal_or_up_to_date.
+- If takes supplements no -> optimal_or_up_to_date.
+- If missing -> data_missing.
+Opportunities:
+- If not third-party tested: suggest review and third-party testing preference.
+""";
+
+        var outputSchema = new
+        {
+            type = "object",
+            additionalProperties = false,
+            required = new[] { "assessment", "strategyOpportunities" },
+            properties = new
+            {
+                assessment = new
+                {
+                    type = "array",
+                    items = new
+                    {
+                        type = "object",
+                        additionalProperties = false,
+                        required = new[] { "domain", "status", "keyFindings", "nextDue" },
+                        properties = new
+                        {
+                            domain = new { type = "string" },
+                            status = new { type = "string" },
+                            keyFindings = new { type = "array", items = new { type = "string" } },
+                            nextDue = new { type = new[] { "string", "null" } }
+                        }
+                    }
+                },
+                strategyOpportunities = new
+                {
+                    type = "array",
+                    items = new
+                    {
+                        type = "object",
+                        additionalProperties = false,
+                        required = new[] { "domain", "opportunities" },
+                        properties = new
+                        {
+                            domain = new { type = "string" },
+                            opportunities = new
+                            {
+                                type = "array",
+                                items = new
+                                {
+                                    type = "object",
+                                    additionalProperties = false,
+                                    required = new[] { "domain", "triggerFinding", "whyItMatters", "nextStep", "timing" },
+                                    properties = new
+                                    {
+                                        domain = new { type = "string" },
+                                        triggerFinding = new { type = "string" },
+                                        whyItMatters = new { type = "string" },
+                                        nextStep = new { type = "string" },
+                                        timing = new { type = "string" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        var userText =
+            "Run the Clinical Preventive Checklist Algorithm.\n\n" +
+            "INPUT_JSON:\n" + preventiveInput.GetRawText();
+
+        var requestBody = new
+        {
+            model = "gpt-5.2",
+            input = new object[]
+            {
+                new
+                {
+                    role = "system",
+                    content = new object[]
+                    {
+                        new { type = "input_text", text = system }
+                    }
+                },
+                new
+                {
+                    role = "user",
+                    content = new object[]
+                    {
+                        new { type = "input_text", text = userText }
+                    }
+                }
+            },
+            text = new
+            {
+                format = new
+                {
+                    type = "json_schema",
+                    name = "clinical_preventive_checklist_output",
+                    strict = true,
+                    schema = outputSchema
+                }
+            }
+        };
+
+        var json = JsonSerializer.Serialize(requestBody);
+
+        using var httpReq = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/responses");
+        httpReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        httpReq.Content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        using var res = await Http.SendAsync(httpReq);
+        var resText = await res.Content.ReadAsStringAsync();
+
+        if (!res.IsSuccessStatusCode)
+            throw new InvalidOperationException($"OpenAI error {(int)res.StatusCode}: {resText}");
+
+        var contentText = ExtractFirstOutputText(resText);
+        if (string.IsNullOrWhiteSpace(contentText))
+            throw new InvalidOperationException("OpenAI returned empty output text.");
+
+        return JsonSerializer.Deserialize<ClinicalPreventiveChecklistResult>(
+            contentText,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+        ) ?? throw new InvalidOperationException("Failed to deserialize clinical preventive checklist JSON.");
+    }
+
     // -------- Metabolic AI (RAW JSON in, structured output out) --------
     public static async Task<MetabolicHealthAiResult> GenerateMetabolicHealthAlgorithmAsync(JsonElement metabolicInput)
     {
@@ -453,6 +709,31 @@ JSON:
     public sealed record BiggestContributor(string MetricName, string Severity, string MechanismLabel);
 
     public sealed record TopIntervention(string Bucket, string RecommendationText, int Priority);
+
+    public sealed record ClinicalPreventiveChecklistResult(
+        ClinicalPreventiveAssessment[] Assessment,
+        ClinicalPreventiveStrategy[] StrategyOpportunities
+    );
+
+    public sealed record ClinicalPreventiveAssessment(
+        string Domain,
+        string Status,
+        string[] KeyFindings,
+        string? NextDue
+    );
+
+    public sealed record ClinicalPreventiveStrategy(
+        string Domain,
+        ClinicalPreventiveOpportunity[] Opportunities
+    );
+
+    public sealed record ClinicalPreventiveOpportunity(
+        string Domain,
+        string TriggerFinding,
+        string WhyItMatters,
+        string NextStep,
+        string Timing
+    );
 
     // -------- Category enforcement (server truth) --------
     private static string ComputeCategoryFromCounts(Counts c, Flags f)
