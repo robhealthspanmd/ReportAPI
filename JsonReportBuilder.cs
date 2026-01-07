@@ -21,7 +21,13 @@ public static class JsonReportBuilder
         object? metabolicAiInput = null,
         PhysicalPerformanceStrategyEngine.Response? physicalPerformanceStrategyEngine = null,
         AiInsights.ClinicalPreventiveChecklistResult? clinicalPreventiveChecklist = null,
-        object? clinicalPreventiveChecklistInput = null
+        object? clinicalPreventiveChecklistInput = null,
+        AiInsights.ProtectYourBrainResult? protectYourBrain = null,
+        object? protectYourBrainInput = null,
+        AiInsights.MentallyEmotionallyWellResult? mentallyEmotionallyWell = null,
+        object? mentallyEmotionallyWellInput = null,
+        BeConnected.Result? beConnected = null,
+        LongevityMindset.Result? longevityMindset = null
     )
     {
         // Keep output stable + frontend-friendly.
@@ -106,7 +112,13 @@ public static class JsonReportBuilder
                 metabolicAssessment = metabolicAi,
                 metabolicAssessmentInput = metabolicAiInput,
                 clinicalPreventiveChecklist = clinicalPreventiveChecklist,
-                clinicalPreventiveChecklistInput = clinicalPreventiveChecklistInput
+                clinicalPreventiveChecklistInput = clinicalPreventiveChecklistInput,
+                protectYourBrain = protectYourBrain,
+                protectYourBrainInput = protectYourBrainInput,
+                mentallyEmotionallyWell = mentallyEmotionallyWell,
+                mentallyEmotionallyWellInput = mentallyEmotionallyWellInput,
+                beConnected = beConnected,
+                longevityMindset = longevityMindset
             }
         };
 
