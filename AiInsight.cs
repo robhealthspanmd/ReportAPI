@@ -262,6 +262,348 @@ Opportunities:
         ) ?? throw new InvalidOperationException("Failed to deserialize clinical preventive checklist JSON.");
     }
 
+    // -------- Protect Your Brain (structured JSON) --------
+    public static async Task<ProtectYourBrainResult> GenerateProtectYourBrainAsync(JsonElement brainInput)
+    {
+        var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
+        if (string.IsNullOrWhiteSpace(apiKey))
+            throw new InvalidOperationException("Missing OPENAI_API_KEY env var.");
+
+        var system = """
+You are a clinical brain health assessment and protection strategy engine.
+You MUST apply the Protect Your Brain algorithm and return ONLY valid JSON (no prose, no markdown).
+
+Use the provided input fields to:
+- confirm the cognitive classification (Above Average, Average, Below Average),
+- confirm the brain risk category (Lower, Intermediate, Higher),
+- use the trend label (Improving, Stable, Worsening, Unknown),
+- include genetic/family context only if known,
+- generate an interpretation that avoids deterministic or fear-based framing.
+
+Assessment rules:
+- Cognitive function is BrainCheck percentile (already capped in input).
+- Trend modifies interpretation language but never replaces the current classification.
+- Higher Risk if cognition is Below Average OR ApoE4 homozygous OR significant decline.
+- Intermediate Risk if cognition is Average/Above AND ApoE4 or family history is present.
+- Lower Risk if cognition is Average/Above AND no genetic/family risk.
+
+Strategy rules:
+- Only include opportunities when the corresponding trigger is true.
+- No generic advice. Use concise, non-judgmental language focused on preservation and risk reduction.
+- If no triggers are true, return an empty opportunities array.
+
+Output structure:
+{
+  "assessment": {
+    "cognitiveClassification": string,
+    "braincheckPercentile": number,
+    "trend": string,
+    "brainRiskCategory": string,
+    "geneticFamilyContext": string|null,
+    "interpretation": string
+  },
+  "strategy": {
+    "opportunities": [
+      {
+        "domain": string,
+        "trigger": string,
+        "whyItMatters": string,
+        "opportunity": string
+      }
+    ]
+  }
+}
+""";
+
+        var outputSchema = new
+        {
+            type = "object",
+            additionalProperties = false,
+            required = new[] { "assessment", "strategy" },
+            properties = new
+            {
+                assessment = new
+                {
+                    type = "object",
+                    additionalProperties = false,
+                    required = new[]
+                    {
+                        "cognitiveClassification",
+                        "braincheckPercentile",
+                        "trend",
+                        "brainRiskCategory",
+                        "geneticFamilyContext",
+                        "interpretation"
+                    },
+                    properties = new
+                    {
+                        cognitiveClassification = new { type = "string" },
+                        braincheckPercentile = new { type = "number" },
+                        trend = new { type = "string" },
+                        brainRiskCategory = new { type = "string" },
+                        geneticFamilyContext = new { type = new[] { "string", "null" } },
+                        interpretation = new { type = "string" }
+                    }
+                },
+                strategy = new
+                {
+                    type = "object",
+                    additionalProperties = false,
+                    required = new[] { "opportunities" },
+                    properties = new
+                    {
+                        opportunities = new
+                        {
+                            type = "array",
+                            items = new
+                            {
+                                type = "object",
+                                additionalProperties = false,
+                                required = new[] { "domain", "trigger", "whyItMatters", "opportunity" },
+                                properties = new
+                                {
+                                    domain = new { type = "string" },
+                                    trigger = new { type = "string" },
+                                    whyItMatters = new { type = "string" },
+                                    opportunity = new { type = "string" }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        var userText =
+            "Run the Protect Your Brain algorithm and produce the assessment + strategy output.\n\n" +
+            "INPUT_JSON:\n" + brainInput.GetRawText();
+
+        var requestBody = new
+        {
+            model = "gpt-5.2",
+            input = new object[]
+            {
+                new
+                {
+                    role = "system",
+                    content = new object[]
+                    {
+                        new { type = "input_text", text = system }
+                    }
+                },
+                new
+                {
+                    role = "user",
+                    content = new object[]
+                    {
+                        new { type = "input_text", text = userText }
+                    }
+                }
+            },
+            text = new
+            {
+                format = new
+                {
+                    type = "json_schema",
+                    name = "protect_your_brain_output",
+                    strict = true,
+                    schema = outputSchema
+                }
+            }
+        };
+
+        var json = JsonSerializer.Serialize(requestBody);
+
+        using var httpReq = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/responses");
+        httpReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        httpReq.Content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        using var res = await Http.SendAsync(httpReq);
+        var resText = await res.Content.ReadAsStringAsync();
+
+        if (!res.IsSuccessStatusCode)
+            throw new InvalidOperationException($"OpenAI error {(int)res.StatusCode}: {resText}");
+
+        var contentText = ExtractFirstOutputText(resText);
+        if (string.IsNullOrWhiteSpace(contentText))
+            throw new InvalidOperationException("OpenAI returned empty output text.");
+
+        return JsonSerializer.Deserialize<ProtectYourBrainResult>(
+            contentText,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+        ) ?? throw new InvalidOperationException("Failed to deserialize Protect Your Brain JSON.");
+    }
+
+    // -------- Mentally & Emotionally Well (structured JSON) --------
+    public static async Task<MentallyEmotionallyWellResult> GenerateMentallyEmotionallyWellAsync(JsonElement mentalInput)
+    {
+        var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
+        if (string.IsNullOrWhiteSpace(apiKey))
+            throw new InvalidOperationException("Missing OPENAI_API_KEY env var.");
+
+        var system = """
+You are a mental and emotional well-being assessment engine.
+You MUST apply the provided algorithm inputs and return ONLY valid JSON (no prose, no markdown).
+
+Assessment rules:
+- Use the provided domain status and trends for depression, anxiety, and stress.
+- Trend modifies interpretation language but never overrides the current status.
+- Overall status is provided as Optimal or Opportunities Identified.
+- Use neutral, non-judgmental language and avoid pathologizing normal emotional states.
+
+Strategy rules:
+- Include an opportunity only when the trigger is true.
+- No generic advice. Keep language concise and supportive.
+- Emphasize early detection, progress, and follow-up.
+- If stressEmphasis is true, ensure stress opportunity text is slightly emphasized (stronger importance phrasing).
+
+Output structure:
+{
+  "assessment": {
+    "overallStatus": string,
+    "summaryStatement": string,
+    "domains": [
+      {
+        "domain": string,
+        "status": string,
+        "trend": string
+      }
+    ]
+  },
+  "strategy": {
+    "opportunities": [
+      {
+        "domain": string,
+        "whyItMatters": string,
+        "opportunity": string
+      }
+    ]
+  }
+}
+""";
+
+        var outputSchema = new
+        {
+            type = "object",
+            additionalProperties = false,
+            required = new[] { "assessment", "strategy" },
+            properties = new
+            {
+                assessment = new
+                {
+                    type = "object",
+                    additionalProperties = false,
+                    required = new[] { "overallStatus", "summaryStatement", "domains" },
+                    properties = new
+                    {
+                        overallStatus = new { type = "string" },
+                        summaryStatement = new { type = "string" },
+                        domains = new
+                        {
+                            type = "array",
+                            items = new
+                            {
+                                type = "object",
+                                additionalProperties = false,
+                                required = new[] { "domain", "status", "trend" },
+                                properties = new
+                                {
+                                    domain = new { type = "string" },
+                                    status = new { type = "string" },
+                                    trend = new { type = "string" }
+                                }
+                            }
+                        }
+                    }
+                },
+                strategy = new
+                {
+                    type = "object",
+                    additionalProperties = false,
+                    required = new[] { "opportunities" },
+                    properties = new
+                    {
+                        opportunities = new
+                        {
+                            type = "array",
+                            items = new
+                            {
+                                type = "object",
+                                additionalProperties = false,
+                                required = new[] { "domain", "whyItMatters", "opportunity" },
+                                properties = new
+                                {
+                                    domain = new { type = "string" },
+                                    whyItMatters = new { type = "string" },
+                                    opportunity = new { type = "string" }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        var userText =
+            "Run the Mentally & Emotionally Well algorithm and produce assessment + strategy output.\n\n" +
+            "INPUT_JSON:\n" + mentalInput.GetRawText();
+
+        var requestBody = new
+        {
+            model = "gpt-5.2",
+            input = new object[]
+            {
+                new
+                {
+                    role = "system",
+                    content = new object[]
+                    {
+                        new { type = "input_text", text = system }
+                    }
+                },
+                new
+                {
+                    role = "user",
+                    content = new object[]
+                    {
+                        new { type = "input_text", text = userText }
+                    }
+                }
+            },
+            text = new
+            {
+                format = new
+                {
+                    type = "json_schema",
+                    name = "mentally_emotionally_well_output",
+                    strict = true,
+                    schema = outputSchema
+                }
+            }
+        };
+
+        var json = JsonSerializer.Serialize(requestBody);
+
+        using var httpReq = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/responses");
+        httpReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        httpReq.Content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        using var res = await Http.SendAsync(httpReq);
+        var resText = await res.Content.ReadAsStringAsync();
+
+        if (!res.IsSuccessStatusCode)
+            throw new InvalidOperationException($"OpenAI error {(int)res.StatusCode}: {resText}");
+
+        var contentText = ExtractFirstOutputText(resText);
+        if (string.IsNullOrWhiteSpace(contentText))
+            throw new InvalidOperationException("OpenAI returned empty output text.");
+
+        return JsonSerializer.Deserialize<MentallyEmotionallyWellResult>(
+            contentText,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+        ) ?? throw new InvalidOperationException("Failed to deserialize Mentally & Emotionally Well JSON.");
+    }
+
     // -------- Metabolic AI (RAW JSON in, structured output out) --------
     public static async Task<MetabolicHealthAiResult> GenerateMetabolicHealthAlgorithmAsync(JsonElement metabolicInput)
     {
@@ -733,6 +1075,58 @@ JSON:
         string WhyItMatters,
         string NextStep,
         string Timing
+    );
+
+    public sealed record ProtectYourBrainResult(
+        ProtectYourBrainAssessment Assessment,
+        ProtectYourBrainStrategy Strategy
+    );
+
+    public sealed record ProtectYourBrainAssessment(
+        string CognitiveClassification,
+        double BraincheckPercentile,
+        string Trend,
+        string BrainRiskCategory,
+        string? GeneticFamilyContext,
+        string Interpretation
+    );
+
+    public sealed record ProtectYourBrainStrategy(
+        ProtectYourBrainOpportunity[] Opportunities
+    );
+
+    public sealed record ProtectYourBrainOpportunity(
+        string Domain,
+        string Trigger,
+        string WhyItMatters,
+        string Opportunity
+    );
+
+    public sealed record MentallyEmotionallyWellResult(
+        MentallyEmotionallyWellAssessment Assessment,
+        MentallyEmotionallyWellStrategy Strategy
+    );
+
+    public sealed record MentallyEmotionallyWellAssessment(
+        string OverallStatus,
+        string SummaryStatement,
+        MentallyEmotionallyWellDomain[] Domains
+    );
+
+    public sealed record MentallyEmotionallyWellDomain(
+        string Domain,
+        string Status,
+        string Trend
+    );
+
+    public sealed record MentallyEmotionallyWellStrategy(
+        MentallyEmotionallyWellOpportunity[] Opportunities
+    );
+
+    public sealed record MentallyEmotionallyWellOpportunity(
+        string Domain,
+        string WhyItMatters,
+        string Opportunity
     );
 
     // -------- Category enforcement (server truth) --------

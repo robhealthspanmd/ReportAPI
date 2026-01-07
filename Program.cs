@@ -246,6 +246,12 @@ app.MapPost("/api/report.json", async (HttpContext http) =>
     object? metabolicAiInput = null;
     AiInsights.ClinicalPreventiveChecklistResult? clinicalPreventiveChecklist = null;
     object? clinicalPreventiveChecklistInput = null;
+    AiInsights.ProtectYourBrainResult? protectYourBrain = null;
+    object? protectYourBrainInput = null;
+    AiInsights.MentallyEmotionallyWellResult? mentallyEmotionallyWell = null;
+    object? mentallyEmotionallyWellInput = null;
+    BeConnected.Result? beConnected = null;
+    LongevityMindset.Result? longevityMindset = null;
 
     try
     {
@@ -317,6 +323,33 @@ app.MapPost("/api/report.json", async (HttpContext http) =>
         clinicalPreventiveChecklist = null;
     }
 
+    try
+    {
+        protectYourBrainInput = ProtectYourBrain.BuildAiInput(req, brain, performance, pheno, cardio);
+        protectYourBrain = await AiInsights.GenerateProtectYourBrainAsync(
+            JsonSerializer.SerializeToElement(protectYourBrainInput)
+        );
+    }
+    catch
+    {
+        protectYourBrain = null;
+    }
+
+    try
+    {
+        mentallyEmotionallyWellInput = MentallyEmotionallyWell.BuildAiInput(req.BrainHealth);
+        mentallyEmotionallyWell = await AiInsights.GenerateMentallyEmotionallyWellAsync(
+            JsonSerializer.SerializeToElement(mentallyEmotionallyWellInput)
+        );
+    }
+    catch
+    {
+        mentallyEmotionallyWell = null;
+    }
+
+    beConnected = BeConnected.BuildResult(req.BrainHealth);
+    longevityMindset = LongevityMindset.BuildResult(req.BrainHealth);
+
     // 8) Build base report JSON bytes (no changes to JsonReportBuilder)
     var bytes = JsonReportBuilder.BuildFullReportJson(
         req, pheno, health, performance, brain,
@@ -327,7 +360,13 @@ app.MapPost("/api/report.json", async (HttpContext http) =>
         metabolicAiInput,
         perfStrategy,
         clinicalPreventiveChecklist,
-        clinicalPreventiveChecklistInput
+        clinicalPreventiveChecklistInput,
+        protectYourBrain,
+        protectYourBrainInput,
+        mentallyEmotionallyWell,
+        mentallyEmotionallyWellInput,
+        beConnected,
+        longevityMindset
     );
 
     // 9) Inject the strategy engine output into computed.physicalPerformanceStrategyEngine
