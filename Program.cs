@@ -244,6 +244,8 @@ app.MapPost("/api/report.json", async (HttpContext http) =>
 
     AiInsights.MetabolicHealthAiResult? metabolicAi = null;
     object? metabolicAiInput = null;
+    AiInsights.ClinicalPreventiveChecklistResult? clinicalPreventiveChecklist = null;
+    object? clinicalPreventiveChecklistInput = null;
 
     try
     {
@@ -278,16 +280,55 @@ app.MapPost("/api/report.json", async (HttpContext http) =>
         metabolicAi = null;
     }
 
+    try
+    {
+        clinicalPreventiveChecklistInput = new
+        {
+            CurrentDateUtc = DateTime.UtcNow.ToString("yyyy-MM-dd"),
+            Demographics = new
+            {
+                AgeYears = req.PhenoAge.ChronologicalAgeYears,
+                Sex = req.HealthAge.Sex,
+                PregnancyPotential = req.ClinicalData.PregnancyPotential
+            },
+            ClinicalData = req.ClinicalData,
+            HealthAge = new
+            {
+                Ast = req.HealthAge.Ast,
+                Alt = req.HealthAge.Alt,
+                Platelets = req.HealthAge.Platelets
+            },
+            PhenoAge = new
+            {
+                Wbc10e3PeruL = req.PhenoAge.WBC_10e3_per_uL
+            },
+            ToxinsLifestyle = new
+            {
+                Smoking = req.ToxinsLifestyle.Smoking
+            }
+        };
+
+        clinicalPreventiveChecklist = await AiInsights.GenerateClinicalPreventiveChecklistAsync(
+            JsonSerializer.SerializeToElement(clinicalPreventiveChecklistInput)
+        );
+    }
+    catch
+    {
+        clinicalPreventiveChecklist = null;
+    }
+
     // 8) Build base report JSON bytes (no changes to JsonReportBuilder)
     var bytes = JsonReportBuilder.BuildFullReportJson(
-    req, pheno, health, performance, brain,
-    cardio,
-    improvementParagraph,
-    cardiologyInterpretationParagraph,
-    metabolicAi,
-    metabolicAiInput,
-    perfStrategy
-);
+        req, pheno, health, performance, brain,
+        cardio,
+        improvementParagraph,
+        cardiologyInterpretationParagraph,
+        metabolicAi,
+        metabolicAiInput,
+        perfStrategy,
+        clinicalPreventiveChecklist,
+        clinicalPreventiveChecklistInput
+    );
 
     // 9) Inject the strategy engine output into computed.physicalPerformanceStrategyEngine
     //    (so we don't have to change JsonReportBuilder.cs right now)
