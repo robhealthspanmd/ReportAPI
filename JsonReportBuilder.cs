@@ -17,9 +17,9 @@ public static class JsonReportBuilder
         Cardiology.Result? cardio,
         string improvementParagraph,
         string cardiologyInterpretationParagraph,
+        string physicalPerformanceAssessmentParagraph,
         AiInsights.MetabolicHealthAiResult? metabolicAi,
         object? metabolicAiInput = null,
-        PhysicalPerformanceStrategyEngine.Response? physicalPerformanceStrategyEngine = null,
         AiInsights.ClinicalPreventiveChecklistResult? clinicalPreventiveChecklist = null,
         object? clinicalPreventiveChecklistInput = null,
         AiInsights.ProtectYourBrainResult? protectYourBrain = null,
@@ -62,7 +62,6 @@ public static class JsonReportBuilder
                 phenoAge = pheno,
                 healthAge = health,
                 performanceAge = performance,
-                physicalPerformanceStrategyEngine = physicalPerformanceStrategyEngine,
                 brainHealth = brain,
                 cardiology = cardio,
                 toxinsLifestyle = ToxinsLifestyle.Evaluate(req.ToxinsLifestyle, req.BrainHealth.PerceivedStressScore)
@@ -109,6 +108,7 @@ public static class JsonReportBuilder
             {
                 improvementParagraph = improvementParagraph ?? string.Empty,
                 cardiologyInterpretationParagraph = cardiologyInterpretationParagraph ?? string.Empty,
+                physicalPerformanceAssessmentParagraph = physicalPerformanceAssessmentParagraph ?? string.Empty,
                 metabolicAssessment = metabolicAi,
                 metabolicAssessmentInput = metabolicAiInput,
                 clinicalPreventiveChecklist = clinicalPreventiveChecklist,

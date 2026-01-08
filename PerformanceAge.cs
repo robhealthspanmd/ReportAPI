@@ -45,7 +45,7 @@ public static class PerformanceAge
     string? RotatorCuffIntegrity = null,
     double? IsometricThighPull = null,
 
-    // ---- Additional fields used by the PhysicalPerformanceStrategyEngine spec (optional) ----
+    // ---- Additional fields used by physical performance assessment (optional) ----
     // These are NOT used by the percentile-based PerformanceAge calculation.
     string? MobilityRom = null,
     string? BalanceAssessment = null,
