@@ -7,12 +7,18 @@ public static class MentallyEmotionallyWell
     private const double TrendDelta = 1.0;
 
     public sealed record AiInput(
+        Demographics Demographics,
         AssessmentSummary Assessment,
         DomainSummary Depression,
         DomainSummary Anxiety,
         DomainSummary Stress,
         OpportunityTriggers Triggers,
         SourceValues Sources
+    );
+
+    public sealed record Demographics(
+        double AgeYears,
+        string? Sex
     );
 
     public sealed record AssessmentSummary(
@@ -35,10 +41,12 @@ public static class MentallyEmotionallyWell
     );
 
     public sealed record SourceValues(
-        string? AssessmentDate
+        string? AssessmentDate,
+        double? PromisSleepDisturbance,
+        double CognitiveFunctionPercentile
     );
 
-    public static AiInput BuildAiInput(BrainHealth.Inputs inputs)
+    public static AiInput BuildAiInput(BrainHealth.Inputs inputs, double ageYears, string? sex)
     {
         var depressionTrend = DetermineTrend(inputs.PromisDepression_8a, inputs.PromisDepressionPrior);
         var anxietyTrend = DetermineTrend(inputs.PromisAnxiety_8a, inputs.PromisAnxietyPrior);
@@ -57,10 +65,16 @@ public static class MentallyEmotionallyWell
             : "Optimal";
 
         string summaryStatement = overallStatus == "Optimal"
-            ? "Your depression, anxiety, and stress scores are in healthy ranges, with stable or improving trends. We will continue to monitor over time to ensure they remain at this level."
-            : "Your assessment shows opportunities to improve depression, anxiety, or stress levels. Addressing these early can support emotional well-being and protect long-term health.";
+            ? "Your depression, anxiety, and stress scores are in healthy ranges. " +
+              "This suggests your emotional state is currently supporting, rather than undermining, physical health and recovery."
+            : "Your results show elevated depression, anxiety, or stress. " +
+              "Emotional strain can quietly amplify physical risk and make recovery and behavior change more difficult if left unaddressed.";
 
         return new AiInput(
+            Demographics: new Demographics(
+                AgeYears: ageYears,
+                Sex: sex
+            ),
             Assessment: new AssessmentSummary(
                 OverallStatus: overallStatus,
                 SummaryStatement: summaryStatement
@@ -90,7 +104,9 @@ public static class MentallyEmotionallyWell
                 StressEmphasis: stressNeedsAttention
             ),
             Sources: new SourceValues(
-                AssessmentDate: inputs.AssessmentDate
+                AssessmentDate: inputs.AssessmentDate,
+                PromisSleepDisturbance: inputs.PromisSleepDisturbance,
+                CognitiveFunctionPercentile: inputs.CognitiveFunction
             )
         );
     }

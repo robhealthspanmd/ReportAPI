@@ -3,11 +3,17 @@ using System;
 public static class ProtectYourBrain
 {
     public sealed record AiInput(
+        Demographics Demographics,
         BraincheckContext Braincheck,
         CognitiveAssessment Assessment,
         RiskContext Risk,
         OpportunityTriggers Triggers,
         SourceValues Sources
+    );
+
+    public sealed record Demographics(
+        double AgeYears,
+        string? Sex
     );
 
     public sealed record BraincheckContext(
@@ -111,6 +117,10 @@ public static class ProtectYourBrain
         bool minimizeToxins = HasToxinExposure(req.ToxinsLifestyle, req.BrainHealth.PerceivedStressScore);
 
         return new AiInput(
+            Demographics: new Demographics(
+                AgeYears: req.PhenoAge.ChronologicalAgeYears,
+                Sex: req.HealthAge.Sex
+            ),
             Braincheck: new BraincheckContext(
                 PercentileRaw: req.BrainHealth.CognitiveFunction,
                 PercentileCapped: braincheckCapped,

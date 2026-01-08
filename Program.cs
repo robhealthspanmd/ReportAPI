@@ -337,7 +337,11 @@ app.MapPost("/api/report.json", async (HttpContext http) =>
 
     try
     {
-        mentallyEmotionallyWellInput = MentallyEmotionallyWell.BuildAiInput(req.BrainHealth);
+        mentallyEmotionallyWellInput = MentallyEmotionallyWell.BuildAiInput(
+            req.BrainHealth,
+            req.PhenoAge.ChronologicalAgeYears,
+            req.HealthAge.Sex
+        );
         mentallyEmotionallyWell = await AiInsights.GenerateMentallyEmotionallyWellAsync(
             JsonSerializer.SerializeToElement(mentallyEmotionallyWellInput)
         );

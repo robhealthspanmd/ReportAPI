@@ -94,9 +94,7 @@ public static class LongevityMindset
             )
         };
 
-        StrategyResult? strategy = anyNeedsAttention
-            ? new StrategyResult(BuildOpportunities(resilienceStatus, optimismStatus, meaningStatus, overallStatus))
-            : null;
+        StrategyResult? strategy = BuildStrategy(resilienceStatus, optimismStatus, meaningStatus, anyNeedsAttention);
 
         return new Result(
             Assessment: new AssessmentResult(
@@ -163,14 +161,13 @@ public static class LongevityMindset
         {
             "Optimal" when !hasTrend =>
                 "Your longevity mindset measures are in healthy ranges. " +
-                "This suggests you currently approach life with resilience, optimism, and a sense of meaning—qualities that support adaptability, engagement, and long-term health as you age.",
+                "This suggests that resilience, optimism, and sense of meaning are supporting your ability to adapt, stay engaged, and sustain long-term health behaviors.",
             "Optimal" =>
                 "Your longevity mindset measures are in healthy ranges and have remained stable or improved over time. " +
                 "This indicates that your resilience, outlook, and sense of purpose are supporting your ability to adapt, recover from challenges, and stay engaged with long-term health goals.",
             _ when !hasTrend =>
                 "Your results suggest opportunities to strengthen aspects of your longevity mindset. " +
-                "Longevity mindset reflects how resilient, optimistic, and purposeful you feel. " +
-                "Improving these areas can support emotional well-being, recovery from stress, and healthy aging over time.",
+                "Lower resilience, optimism, or sense of meaning can make long-term health changes harder to sustain, even when motivation is present.",
             _ =>
                 "Your results suggest opportunities to strengthen your longevity mindset, with changes compared to prior assessments. " +
                 "Shifts in resilience, optimism, or sense of meaning can occur during periods of stress or transition. " +
@@ -178,16 +175,34 @@ public static class LongevityMindset
         };
     }
 
-    private static OpportunityResult[] BuildOpportunities(string resilienceStatus, string optimismStatus, string meaningStatus, string overallStatus)
+    private static StrategyResult? BuildStrategy(string resilienceStatus, string optimismStatus, string meaningStatus, bool anyNeedsAttention)
     {
-        var opportunities = new List<OpportunityResult>();
+        if (!anyNeedsAttention)
+        {
+            var preserve = "A protective factor worth preserving is resilience and adaptability. " +
+                           "Resilience and optimism support consistency and adaptability over time.";
+            if (CountNeedsAttention(resilienceStatus, optimismStatus, meaningStatus) >= 2)
+            {
+                preserve += " Given the long-term nature of your prevention goals, this mindset is particularly important for sustaining progress.";
+            }
 
+            return new StrategyResult(new[]
+            {
+                new OpportunityResult(
+                    Domain: "Longevity Mindset",
+                    WhyItMatters: "Resilience, optimism, and sense of meaning support consistency and adaptability over time.",
+                    Opportunity: preserve
+                )
+            });
+        }
+
+        var opportunities = new List<OpportunityResult>();
         if (resilienceStatus == "Needs Attention")
         {
             opportunities.Add(new OpportunityResult(
                 Domain: "Resilience",
                 WhyItMatters: "Lower resilience can make stressors feel more overwhelming and slow recovery from challenges.",
-                Opportunity: "Strengthening resilience supports emotional stability, adaptive coping, and long-term health."
+                Opportunity: "An important area to strengthen is resilience and adaptability. Improving this capacity supports emotional stability, adaptive coping, and long-term health."
             ));
         }
 
@@ -196,7 +211,7 @@ public static class LongevityMindset
             opportunities.Add(new OpportunityResult(
                 Domain: "Optimism",
                 WhyItMatters: "Lower optimism is associated with higher stress perception and reduced engagement in health-promoting behaviors.",
-                Opportunity: "Supporting a more optimistic outlook can improve motivation, coping, and long-term well-being."
+                Opportunity: "A high-leverage focus for improving this score is to strengthen optimism and future orientation. This can improve motivation, coping, and long-term well-being."
             ));
         }
 
@@ -205,10 +220,28 @@ public static class LongevityMindset
             opportunities.Add(new OpportunityResult(
                 Domain: "Meaning in Life",
                 WhyItMatters: "A reduced sense of meaning or purpose can affect motivation, engagement, and emotional well-being.",
-                Opportunity: "Strengthening clarity of purpose may support resilience, fulfillment, and sustained health behaviors."
+                Opportunity: "An important area to strengthen is sense of meaning and purpose. This supports resilience, fulfillment, and sustained health behaviors."
             ));
         }
 
-        return opportunities.ToArray();
+        if (CountNeedsAttention(resilienceStatus, optimismStatus, meaningStatus) >= 2)
+        {
+            opportunities.Add(new OpportunityResult(
+                Domain: "Longevity Mindset",
+                WhyItMatters: "When multiple mindset domains need attention, follow-through across health goals becomes more difficult.",
+                Opportunity: "An area that may amplify progress across other health domains is resilience and adaptability. This foundation can make long-term health strategies feel more sustainable."
+            ));
+        }
+
+        return new StrategyResult(opportunities.ToArray());
+    }
+
+    private static int CountNeedsAttention(string resilienceStatus, string optimismStatus, string meaningStatus)
+    {
+        int count = 0;
+        if (resilienceStatus == "Needs Attention") count++;
+        if (optimismStatus == "Needs Attention") count++;
+        if (meaningStatus == "Needs Attention") count++;
+        return count;
     }
 }

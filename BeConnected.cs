@@ -41,16 +41,7 @@ public static class BeConnected
 
         string summary = BuildSummary(score, prior, trend, statusNeedsAttention);
 
-        StrategyResult? strategy = statusNeedsAttention
-            ? new StrategyResult(new[]
-            {
-                new OpportunityResult(
-                    Domain: "Flourishing",
-                    WhyItMatters: "Lower flourishing scores can reflect reduced connection, engagement, or sense of purpose. These factors are closely linked to emotional resilience and physical health.",
-                    Opportunity: BuildOpportunity(trendWorsening)
-                )
-            })
-            : null;
+        StrategyResult? strategy = BuildStrategy(statusNeedsAttention, trendWorsening, inputs);
 
         return new Result(
             Assessment: new AssessmentResult(
@@ -78,28 +69,26 @@ public static class BeConnected
 
         if (scoreOptimal && !hasPrior)
         {
-            return "Your Flourishing Scale score is in the optimal range. " +
-                   "This means your life currently reflects a strong sense of purpose, satisfaction, and connection. " +
-                   "These factors support emotional well-being and resilience and are associated with better physical health and longevity over time.";
+            return "Your Flourishing score is in the optimal range. " +
+                   "This suggests that your current level of connection, engagement, and sense of purpose is supporting your emotional well-being and overall health, rather than working against it.";
         }
 
         if (scoreOptimal && hasPrior && (trend == "Stable" || trend == "Improving"))
         {
-            return "Your Flourishing Scale score is in the optimal range and has remained stable or improved over time. " +
-                   "This suggests that your sense of purpose, engagement, and connection is supporting your overall well-being and reinforcing your long-term health and longevity goals.";
+            return "Your Flourishing score is in the optimal range and has remained stable or improved over time. " +
+                   "This indicates that connection and engagement are acting as protective factors for your long-term healthspan.";
         }
 
         if (!needsAttention && hasPrior)
         {
-            return "Your Flourishing Scale score is in the optimal range. " +
-                   "These results suggest strong connection, engagement, and sense of purpose that support emotional well-being and long-term health.";
+            return "Your Flourishing score is in the optimal range. " +
+                   "This indicates that connection and engagement are acting as protective factors for your long-term healthspan.";
         }
 
         if (!scoreOptimal && !hasPrior)
         {
-            return "Your Flourishing Scale score suggests opportunities to strengthen connection, engagement, or sense of purpose. " +
-                   "Flourishing reflects how supported, connected, and fulfilled you feel in daily life. " +
-                   "Improving these areas can positively influence emotional health, cognitive resilience, and physical health over time.";
+            return "Your Flourishing score suggests opportunities to strengthen connection, engagement, or sense of purpose. " +
+                   "Lower flourishing can affect motivation, resilience, and long-term health, even when other areas of health appear strong.";
         }
 
         if (trendWorsening)
@@ -109,23 +98,60 @@ public static class BeConnected
                    "Addressing these areas early may help support resilience and long-term health.";
         }
 
-        return "Your Flourishing Scale score suggests opportunities to strengthen connection, engagement, or sense of purpose. " +
-               "Flourishing reflects how supported, connected, and fulfilled you feel in daily life. " +
-               "Improving these areas can positively influence emotional health, cognitive resilience, and physical health over time.";
+        return "Your Flourishing score suggests opportunities to strengthen connection, engagement, or sense of purpose. " +
+               "Lower flourishing can affect motivation, resilience, and long-term health, even when other areas of health appear strong.";
     }
 
-    private static string BuildOpportunity(bool trendWorsening)
+    private static StrategyResult? BuildStrategy(bool needsAttention, bool trendWorsening, BrainHealth.Inputs inputs)
     {
-        var baseText = "Lower flourishing scores can reflect reduced connection, engagement, or sense of purpose. " +
-                       "These factors are closely linked to emotional resilience and physical health. " +
-                       "Strengthening connection and meaning represents an opportunity to support your overall healthspan.";
-
-        if (!trendWorsening)
+        if (!needsAttention)
         {
-            return baseText;
+            var preserve = "A protective factor worth preserving is connection and engagement. " +
+                           "Your current level of connection is a protective factor that supports resilience and long-term health.";
+            if (HasElevatedStress(inputs))
+            {
+                preserve += " Given your current stress profile, preserving strong connection may be especially important for you.";
+            }
+
+            return new StrategyResult(new[]
+            {
+                new OpportunityResult(
+                    Domain: "Flourishing",
+                    WhyItMatters: "Connection and engagement act as protective factors that support resilience and long-term health.",
+                    Opportunity: preserve
+                )
+            });
         }
 
-        return baseText +
-               " Because this represents a change from prior assessments, addressing these areas now may help prevent further decline and support recovery.";
+        var strengthen = "An important area to strengthen is connection and engagement. " +
+                         "Improving your Flourishing score represents an opportunity to enhance resilience, motivation, and adherence to other health-protective behaviors.";
+        if (HasElevatedStressOrDepression(inputs))
+        {
+            strengthen += " Given your current stress or emotional burden, strengthening connection may be a particularly high-leverage way to support recovery and overall health.";
+        }
+
+        if (trendWorsening)
+        {
+            strengthen += " Because this represents a change from prior assessments, addressing these areas now may help prevent further decline and support recovery.";
+        }
+
+        return new StrategyResult(new[]
+        {
+            new OpportunityResult(
+                Domain: "Flourishing",
+                WhyItMatters: "Lower flourishing can affect motivation, resilience, and long-term health, even when other areas appear strong.",
+                Opportunity: strengthen
+            )
+        });
+    }
+
+    private static bool HasElevatedStress(BrainHealth.Inputs inputs)
+    {
+        return inputs.PerceivedStressScore > 13;
+    }
+
+    private static bool HasElevatedStressOrDepression(BrainHealth.Inputs inputs)
+    {
+        return inputs.PerceivedStressScore > 13 || inputs.PromisDepression_8a > 55;
     }
 }
