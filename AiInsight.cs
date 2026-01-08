@@ -1054,6 +1054,78 @@ DATA (JSON):
         return ExtractFirstOutputText(resText);
     }
 
+    // -------- Physical performance narrative --------
+    public static async Task<string> GeneratePhysicalPerformanceAssessmentAsync(ReportRequest request, PerformanceAge.Result performanceResult)
+    {
+        var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
+        if (string.IsNullOrWhiteSpace(apiKey))
+            throw new InvalidOperationException("Missing OPENAI_API_KEY env var.");
+
+        var system = """
+You are a clinician writing the “Physical Performance Assessment” section.
+Never use the dash character in the output.
+This is an assessment-only narrative: do not prescribe exercise tactics, workouts, or step-by-step plans.
+You will be given performance inputs and computed outputs (including Performance Age, percentiles, and optional mobility/strength metrics).
+
+Hard requirements:
+1) Use medical language and a clear, educated-patient tone.
+2) Start by stating what is OPTIMAL vs NOT OPTIMAL based on the findings and numbers.
+3) Focus on interpretation and clinical meaning; do not give specific tactics or training prescriptions.
+4) Do not invent tests or results that are not in the JSON.
+5) Multiple paragraphs. No bullet points.
+""";
+
+        var user = $"""
+Write the physical performance assessment described above.
+
+DATA (JSON):
+{JsonSerializer.Serialize(new
+{
+    performanceInputs = request.PerformanceAge,
+    performanceResult = performanceResult,
+    chronologicalAgeYears = request.PhenoAge.ChronologicalAgeYears
+})}
+""";
+
+        var req = new
+        {
+            model = "gpt-5.2",
+            input = new object[]
+            {
+                new
+                {
+                    role = "system",
+                    content = new object[]
+                    {
+                        new { type = "input_text", text = system }
+                    }
+                },
+                new
+                {
+                    role = "user",
+                    content = new object[]
+                    {
+                        new { type = "input_text", text = user }
+                    }
+                }
+            }
+        };
+
+        var json = JsonSerializer.Serialize(req);
+
+        using var msg = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/responses");
+        msg.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        msg.Content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        using var res = await Http.SendAsync(msg);
+        var resText = await res.Content.ReadAsStringAsync();
+
+        if (!res.IsSuccessStatusCode)
+            throw new InvalidOperationException($"OpenAI error {(int)res.StatusCode}: {resText}");
+
+        return ExtractFirstOutputText(resText);
+    }
+
     // -------- General improvement narrative --------
     public static async Task<string> GenerateImprovementParagraphAsync(object modelSummary)
     {

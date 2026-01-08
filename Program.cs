@@ -129,8 +129,7 @@ app.MapPost("/api/cardiology", (Cardiology.Inputs input) =>
 /// Updated to:
 /// - read raw JSON (so extra performance fields are not dropped)
 /// - attach new performance fields onto PerformanceAge.Result (no changes to PerformanceAge.Calculate)
-/// - compute PhysicalPerformanceStrategyEngine output
-/// - inject that engine output into the final JSON (no changes to JsonReportBuilder)
+/// - generate AI-driven physical performance assessment narrative
 /// </summary>
 app.MapPost("/api/report.json", async (HttpContext http) =>
 {
@@ -220,10 +219,7 @@ app.MapPost("/api/report.json", async (HttpContext http) =>
         cardio = Cardiology.Calculate(cardioInputs);
     }
 
-    // 6) Strategy engine (deterministic; only emits strategies if there are triggers)
-    var perfStrategy = PhysicalPerformanceStrategyEngine.Generate(req.PerformanceAge, performance);
-
-    // 7) AI summaries (same as before)
+    // 6) AI summaries (same as before)
     var summaryForAi = new
     {
         chronologicalAgeYears = req.PhenoAge.ChronologicalAgeYears,
@@ -241,6 +237,9 @@ app.MapPost("/api/report.json", async (HttpContext http) =>
 
     var cardiologyInterpretationParagraph =
         cardio is null ? "" : await AiInsights.GenerateCardiologyInterpretationAsync(req, cardio);
+
+    var physicalPerformanceAssessmentParagraph =
+        await AiInsights.GeneratePhysicalPerformanceAssessmentAsync(req, performance);
 
     AiInsights.MetabolicHealthAiResult? metabolicAi = null;
     object? metabolicAiInput = null;
@@ -354,15 +353,15 @@ app.MapPost("/api/report.json", async (HttpContext http) =>
     beConnected = BeConnected.BuildResult(req.BrainHealth);
     longevityMindset = LongevityMindset.BuildResult(req.BrainHealth);
 
-    // 8) Build base report JSON bytes (no changes to JsonReportBuilder)
+    // 7) Build base report JSON bytes
     var bytes = JsonReportBuilder.BuildFullReportJson(
         req, pheno, health, performance, brain,
         cardio,
         improvementParagraph,
         cardiologyInterpretationParagraph,
+        physicalPerformanceAssessmentParagraph,
         metabolicAi,
         metabolicAiInput,
-        perfStrategy,
         clinicalPreventiveChecklist,
         clinicalPreventiveChecklistInput,
         protectYourBrain,
@@ -372,23 +371,6 @@ app.MapPost("/api/report.json", async (HttpContext http) =>
         beConnected,
         longevityMindset
     );
-
-    // 9) Inject the strategy engine output into computed.physicalPerformanceStrategyEngine
-    //    (so we don't have to change JsonReportBuilder.cs right now)
-    try
-    {
-        var node = JsonNode.Parse(bytes) as JsonObject;
-        var computedNode = node?["computed"] as JsonObject;
-        if (computedNode is not null)
-        {
-            computedNode["physicalPerformanceStrategyEngine"] = JsonSerializer.SerializeToNode(perfStrategy);
-            bytes = JsonSerializer.SerializeToUtf8Bytes(node!);
-        }
-    }
-    catch
-    {
-        // If injection fails, return base report.
-    }
 
     var filename = $"Healthspan_Report_{DateTime.UtcNow:yyyyMMdd_HHmmss}.json";
     return Results.File(bytes, "application/json", filename);
