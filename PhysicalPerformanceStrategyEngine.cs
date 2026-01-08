@@ -5,4 +5,5 @@
 /// </summary>
 public static class PhysicalPerformanceStrategyEngine
 {
+    // Intentionally left blank.
 }
