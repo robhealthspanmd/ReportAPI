@@ -254,7 +254,7 @@ public static class Cardiology
         if (missingEf && missingDuke && missingEcg && missingStructure)
             physiologyStatus = "Unknown (insufficient physiology inputs)";
         else if (physiologyScore >= 10)
-            physiologyStatus = "Normal / low concern";
+            physiologyStatus = "Normal";
         else if (physiologyScore >= 7)
             physiologyStatus = "Mild abnormality";
         else if (physiologyScore >= 4)
