@@ -272,6 +272,14 @@ public static class JsonReportBuilder
                 schemaVersion = "report-json-v3"
             },
             chronologicalAgeYears = req.PhenoAge.ChronologicalAgeYears,
+            healthScores = new
+            {
+                healthAge = health.HealthAgeFinal,
+                brainScore = brain.TotalScore,
+                physicalPerformanceScore = performance.PerformanceAge,
+                heartScore = cardio?.HeartHealthScore,
+                
+            },
             pillars = new object[]
             {
                 new
