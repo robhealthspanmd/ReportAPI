@@ -23,7 +23,21 @@ app.MapGet("/", () => Results.Ok(new { status = "ok", service = "ReportAPI" }));
 // --- NEW: Metabolic AI endpoint (raw JSON in, structured JSON out) ---
 app.MapPost("/api/metabolic-ai", async (JsonElement req) =>
 {
-    var result = await AiInsights.GenerateMetabolicHealthAlgorithmAsync(req);
+    var algorithmResult = await AiInsights.GenerateMetabolicHealthAlgorithmAsync(req);
+    var opportunityParagraphs = await AiInsights.GenerateMetabolicOpportunityParagraphsAsync(req, algorithmResult);
+
+    var result = new AiInsights.MetabolicHealthAiResult(
+        algorithmResult.MetabolicHealthCategory,
+        algorithmResult.DerivedMetrics,
+        algorithmResult.Grades,
+        algorithmResult.Counts,
+        algorithmResult.Flags,
+        algorithmResult.BiggestContributors,
+        opportunityParagraphs,
+        algorithmResult.OptionalProgramsOffered,
+        algorithmResult.Notes
+    );
+
     return Results.Ok(result);
 });
 
@@ -242,6 +256,7 @@ app.MapPost("/api/report.json", async (HttpContext http) =>
         await AiInsights.GeneratePhysicalPerformanceAssessmentAsync(req, performance);
 
     AiInsights.MetabolicHealthAiResult? metabolicAi = null;
+    AiInsights.MetabolicHealthAiAlgorithmResult? metabolicAiAlgorithm = null;
     object? metabolicAiInput = null;
     AiInsights.ClinicalPreventiveChecklistResult? clinicalPreventiveChecklist = null;
     object? clinicalPreventiveChecklistInput = null;
@@ -275,8 +290,25 @@ app.MapPost("/api/report.json", async (HttpContext http) =>
             Sex = req.HealthAge.Sex
         };
 
-        metabolicAi = await AiInsights.GenerateMetabolicHealthAlgorithmAsync(
+        metabolicAiAlgorithm = await AiInsights.GenerateMetabolicHealthAlgorithmAsync(
             JsonSerializer.SerializeToElement(metabolicAiInput)
+        );
+
+        var opportunityParagraphs = await AiInsights.GenerateMetabolicOpportunityParagraphsAsync(
+            JsonSerializer.SerializeToElement(metabolicAiInput),
+            metabolicAiAlgorithm
+        );
+
+        metabolicAi = new AiInsights.MetabolicHealthAiResult(
+            metabolicAiAlgorithm.MetabolicHealthCategory,
+            metabolicAiAlgorithm.DerivedMetrics,
+            metabolicAiAlgorithm.Grades,
+            metabolicAiAlgorithm.Counts,
+            metabolicAiAlgorithm.Flags,
+            metabolicAiAlgorithm.BiggestContributors,
+            opportunityParagraphs,
+            metabolicAiAlgorithm.OptionalProgramsOffered,
+            metabolicAiAlgorithm.Notes
         );
     }
     catch
