@@ -278,8 +278,7 @@ public static class JsonReportBuilder
                 brainScore = brain.TotalScore,
                 physicalPerformanceScore = performance.PerformanceAge,
                 heartScore = cardio?.HeartHealthScore,
-                heartScoreBaseline = cardio?.BaselineHeartHealthScore,
-                heartScoreModifiable = cardio?.ModifiableHeartHealthScore
+                
             },
             pillars = new object[]
             {
