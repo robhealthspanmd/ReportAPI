@@ -272,12 +272,12 @@ public static class JsonReportBuilder
                 schemaVersion = "report-json-v3"
             },
             chronologicalAgeYears = req.PhenoAge.ChronologicalAgeYears,
-            pillars = new[]
+            pillars = new object[]
             {
                 new
                 {
                     pillar = "avoiddisease",
-                    domains = new[]
+                    domains = new object[]
                     {
                         new
                         {
@@ -327,7 +327,7 @@ public static class JsonReportBuilder
                 new
                 {
                     pillar = "strongandindepedent",
-                    domains = new[]
+                    domains = new object[]
                     {
                         new
                         {
@@ -346,7 +346,7 @@ public static class JsonReportBuilder
                 new
                 {
                     pillar = "mentallysharp",
-                    domains = new[]
+                    domains = new object[]
                     {
                         new
                         {
