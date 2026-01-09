@@ -696,7 +696,7 @@ Output structure:
     }
 
     // -------- Metabolic AI (RAW JSON in, structured output out) --------
-    public static async Task<MetabolicHealthAiResult> GenerateMetabolicHealthAlgorithmAsync(JsonElement metabolicInput)
+    public static async Task<MetabolicHealthAiAlgorithmResult> GenerateMetabolicHealthAlgorithmAsync(JsonElement metabolicInput)
     {
         var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
         if (string.IsNullOrWhiteSpace(apiKey))
@@ -953,7 +953,7 @@ Console.WriteLine("================================");
         if (string.IsNullOrWhiteSpace(contentText))
             throw new InvalidOperationException("OpenAI returned empty output text.");
 
-        var result = JsonSerializer.Deserialize<MetabolicHealthAiResult>(
+        var result = JsonSerializer.Deserialize<MetabolicHealthAiAlgorithmResult>(
             contentText,
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
         ) ?? throw new InvalidOperationException("Failed to deserialize metabolic health JSON.");
@@ -977,6 +977,114 @@ Console.WriteLine("================================");
         }
 
         return result;
+    }
+
+    // -------- Metabolic opportunity narratives --------
+    public static async Task<string[]> GenerateMetabolicOpportunityParagraphsAsync(
+        JsonElement metabolicInput,
+        MetabolicHealthAiAlgorithmResult algorithmResult)
+    {
+        var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
+        if (string.IsNullOrWhiteSpace(apiKey))
+            throw new InvalidOperationException("Missing OPENAI_API_KEY env var.");
+
+        var system = """
+You are a physician writing short opportunity paragraphs for a metabolic health report.
+Never use the dash character in the output.
+You will receive the computed metabolic algorithm output plus the original input JSON.
+
+Hard requirements:
+1) Write one short paragraph per opportunity in the provided TopInterventions list, in the same order.
+2) Each paragraph should be 2 to 4 sentences, patient-friendly, and clinically accurate.
+3) Do not include bullet points or numbering.
+4) Do not invent tests or results not present in the data.
+5) Avoid specific diet prescriptions; keep nutrition guidance high-level (review patterns with clinician).
+6) If TopInterventions is empty, return an empty array.
+""";
+
+        var user = $"""
+Write short opportunity paragraphs for the TopInterventions.
+
+DATA (JSON):
+{JsonSerializer.Serialize(new
+{
+    metabolicInput = metabolicInput,
+    algorithmResult = algorithmResult
+})}
+""";
+
+        var outputSchema = new
+        {
+            type = "object",
+            additionalProperties = false,
+            required = new[] { "opportunityParagraphs" },
+            properties = new
+            {
+                opportunityParagraphs = new
+                {
+                    type = "array",
+                    maxItems = 3,
+                    items = new { type = "string" }
+                }
+            }
+        };
+
+        var req = new
+        {
+            model = "gpt-5.2",
+            input = new object[]
+            {
+                new
+                {
+                    role = "system",
+                    content = new object[]
+                    {
+                        new { type = "input_text", text = system }
+                    }
+                },
+                new
+                {
+                    role = "user",
+                    content = new object[]
+                    {
+                        new { type = "input_text", text = user }
+                    }
+                }
+            },
+            text = new
+            {
+                format = new
+                {
+                    type = "json_schema",
+                    name = "metabolic_opportunity_paragraphs_output",
+                    strict = true,
+                    schema = outputSchema
+                }
+            }
+        };
+
+        var json = JsonSerializer.Serialize(req);
+
+        using var msg = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/responses");
+        msg.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        msg.Content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        using var res = await Http.SendAsync(msg);
+        var resText = await res.Content.ReadAsStringAsync();
+
+        if (!res.IsSuccessStatusCode)
+            throw new InvalidOperationException($"OpenAI error {(int)res.StatusCode}: {resText}");
+
+        var contentText = ExtractFirstOutputText(resText);
+        if (string.IsNullOrWhiteSpace(contentText))
+            throw new InvalidOperationException("OpenAI returned empty output text.");
+
+        var parsed = JsonSerializer.Deserialize<MetabolicOpportunityParagraphsOutput>(
+            contentText,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+        ) ?? throw new InvalidOperationException("Failed to deserialize metabolic opportunity paragraphs.");
+
+        return parsed.OpportunityParagraphs ?? Array.Empty<string>();
     }
 
     // -------- Cardiology narrative --------
@@ -1191,7 +1299,7 @@ JSON:
     }
 
     // -------- Output types (match your schema) --------
-    public sealed record MetabolicHealthAiResult(
+    public sealed record MetabolicHealthAiAlgorithmResult(
         string MetabolicHealthCategory,
         DerivedMetrics DerivedMetrics,
         Grades Grades,
@@ -1199,6 +1307,18 @@ JSON:
         Flags Flags,
         BiggestContributor[] BiggestContributors,
         TopIntervention[] TopInterventions,
+        string[] OptionalProgramsOffered,
+        string[] Notes
+    );
+
+    public sealed record MetabolicHealthAiResult(
+        string MetabolicHealthCategory,
+        DerivedMetrics DerivedMetrics,
+        Grades Grades,
+        Counts Counts,
+        Flags Flags,
+        BiggestContributor[] BiggestContributors,
+        string[] OpportunityParagraphs,
         string[] OptionalProgramsOffered,
         string[] Notes
     );
@@ -1222,6 +1342,8 @@ JSON:
     public sealed record BiggestContributor(string MetricName, string Severity, string MechanismLabel);
 
     public sealed record TopIntervention(string Bucket, string RecommendationText, int Priority);
+
+    public sealed record MetabolicOpportunityParagraphsOutput(string[] OpportunityParagraphs);
 
     public sealed record ClinicalPreventiveChecklistResult(
         ClinicalPreventiveAssessment[] Assessment,
