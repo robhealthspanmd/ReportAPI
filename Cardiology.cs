@@ -96,6 +96,9 @@ public static class Cardiology
         [JsonPropertyName("familyHistoryPrematureAscVDDetails")]
         public string? FamilyHistoryPrematureAscVDDetails { get; init; }
 
+        [JsonPropertyName("lipoproteina")]
+        public int? Lipoproteina { get; init; }
+
         // Clinician notes / misc (frontend sends these as strings)
         [JsonPropertyName("specificCardiologyInstructions")]
         public string? SpecificCardiologyInstructions { get; init; }
