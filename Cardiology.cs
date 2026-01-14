@@ -99,6 +99,9 @@ public static class Cardiology
         [JsonPropertyName("lipoproteina")]
         public int? Lipoproteina { get; init; }
 
+        [JsonPropertyName("apoB")]
+        public double? ApoB { get; init; }
+
         // Clinician notes / misc (frontend sends these as strings)
         [JsonPropertyName("specificCardiologyInstructions")]
         public string? SpecificCardiologyInstructions { get; init; }

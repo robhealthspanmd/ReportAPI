@@ -80,6 +80,7 @@ public static class JsonReportBuilder
             BuildTest("Family History Premature ASCVD Details", req.Cardiology?.FamilyHistoryPrematureAscVDDetails),
             BuildTest("Specific Cardiology Instructions", req.Cardiology?.SpecificCardiologyInstructions),
             BuildTest("Lipoprotein A", req.Cardiology?.Lipoproteina),
+            BuildTest("ApoB", req.Cardiology?.ApoB),
             BuildTest("Modifiable Heart Health Score", req.Cardiology?.ModifiableHeartHealthScore),
             BuildTest("Blood Pressure Systolic", req.HealthAge.SystolicBP),
             BuildTest("Blood Pressure Diastolic", req.HealthAge.DiastolicBP),
@@ -91,12 +92,20 @@ public static class JsonReportBuilder
             BuildTest("hs CRP", req.PhenoAge.CRP_mg_L)
         };
 
+        double? leanToFatMassRatio =
+            (req.HealthAge.TotalLeanMass is not null &&
+             req.HealthAge.TotalFatMass is not null &&
+             req.HealthAge.TotalFatMass != 0)
+                ? req.HealthAge.TotalLeanMass / req.HealthAge.TotalFatMass
+                : (double?)null;
+
         var metabolicTests = new[]
         {
             BuildTest("Sex", req.HealthAge.Sex),
             BuildTest("Body Fat Percentile", req.HealthAge.BodyFatPercentile),
             BuildTest("Visceral Fat Percentile", req.HealthAge.VisceralFatPercentile),
             BuildTest("Appendicular Muscle Percentile", req.HealthAge.AppendicularMusclePercentile),
+            BuildTest("Lean To Fat Mass Ratio", leanToFatMassRatio),
             BuildTest("Fasting Insulin", req.HealthAge.FastingInsulin_uIU_mL),
             BuildTest("Fasting Glucose", req.HealthAge.FastingGlucose_mg_dL),
             BuildTest("Hemoglobin A1c", req.HealthAge.HemoglobinA1c),
@@ -113,7 +122,8 @@ public static class JsonReportBuilder
             BuildTest("Total Fat Mass Per Height", req.HealthAge.TotalFatMassPerHeight),
             BuildTest("Visceral Fat Mass", req.HealthAge.VisceralFatMass),
             BuildTest("Total Lean Mass", req.HealthAge.TotalLeanMass),
-            BuildTest("Total Lean Mass Per Height", req.HealthAge.TotalLeanMassPerHeight)
+            BuildTest("Total Lean Mass Per Height", req.HealthAge.TotalLeanMassPerHeight),
+            BuildTest("Appendicular Lean Mass", req.HealthAge.AppendicularLeanMass)
         };
 
         var clinicalTests = new[]
@@ -211,17 +221,29 @@ public static class JsonReportBuilder
         var fitnessTests = new[]
         {
             BuildTest("VO2 Max Percentile", req.PerformanceAge.Vo2MaxPercentile),
+            BuildTest("Heart Rate Recovery", performance.HeartRateRecovery),
             BuildTest("Gait Speed Comfortable Percentile", req.PerformanceAge.GaitSpeedComfortablePercentile),
-            BuildTest("Gait Speed Max Percentile", req.PerformanceAge.GaitSpeedMaxPercentile)
+            BuildTest("Gait Speed Max Percentile", req.PerformanceAge.GaitSpeedMaxPercentile),
+            BuildTest("Trunk Endurance Percentile", performance.TrunkEndurance),
+            BuildTest("Posture Tragus To Wall", performance.PostureAssessment),
+            BuildTest("Floor To Stand Score", performance.FloorToStandTest),
+            BuildTest("Mobility ROM Flags", performance.MobilityRom)
         };
 
         var strengthTests = new[]
         {
             BuildTest("Quadriceps Strength Percentile", req.PerformanceAge.QuadricepsStrengthPercentile),
+            BuildTest("Hip Strength Percentile", performance.HipStrength),
+            BuildTest("Calf Strength Percentile", performance.CalfStrength),
+            BuildTest("Rotator Cuff Percentile", performance.RotatorCuffIntegrity),
+            BuildTest("IMTP Percentile", performance.IsometricThighPullPercentile),
+            BuildTest("IMTP Force", performance.IsometricThighPull),
             BuildTest("Grip Strength Percentile", req.PerformanceAge.GripStrengthPercentile),
             BuildTest("Power Percentile", req.PerformanceAge.PowerPercentile),
             BuildTest("Balance Percentile", req.PerformanceAge.BalancePercentile),
-            BuildTest("Chair Rise Percentile", req.PerformanceAge.ChairRisePercentile)
+            BuildTest("Chair Rise Percentile", req.PerformanceAge.ChairRisePercentile),
+            BuildTest("5x Sit-to-Stand", performance.ChairRiseFiveTimes),
+            BuildTest("30-Second Sit-to-Stand Count", performance.ChairRiseThirtySeconds)
         };
 
         var brainTests = new[]
