@@ -252,8 +252,11 @@ app.MapPost("/api/report.json", async (HttpContext http) =>
     var cardiologyInterpretationParagraph =
         cardio is null ? "" : await AiInsights.GenerateCardiologyInterpretationAsync(req, cardio);
 
-    var physicalPerformanceAssessmentParagraph =
-        await AiInsights.GeneratePhysicalPerformanceAssessmentAsync(req, performance);
+    var fitnessMobilityAssessmentParagraph =
+        await AiInsights.GenerateFitnessMobilityAssessmentAsync(req, performance);
+
+    var strengthStabilityAssessmentParagraph =
+        await AiInsights.GenerateStrengthStabilityAssessmentAsync(req, performance);
 
     AiInsights.MetabolicHealthAiResult? metabolicAi = null;
     AiInsights.MetabolicHealthAiAlgorithmResult? metabolicAiAlgorithm = null;
@@ -391,7 +394,8 @@ app.MapPost("/api/report.json", async (HttpContext http) =>
         cardio,
         improvementParagraph,
         cardiologyInterpretationParagraph,
-        physicalPerformanceAssessmentParagraph,
+        fitnessMobilityAssessmentParagraph,
+        strengthStabilityAssessmentParagraph,
         metabolicAi,
         metabolicAiInput,
         clinicalPreventiveChecklist,
