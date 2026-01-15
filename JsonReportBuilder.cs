@@ -28,7 +28,8 @@ public static class JsonReportBuilder
         Cardiology.Result? cardio,
         string improvementParagraph,
         string cardiologyInterpretationParagraph,
-        string physicalPerformanceAssessmentParagraph,
+        string fitnessMobilityAssessmentParagraph,
+        string strengthStabilityAssessmentParagraph,
         AiInsights.MetabolicHealthAiResult? metabolicAi,
         object? metabolicAiInput = null,
         AiInsights.ClinicalPreventiveChecklistResult? clinicalPreventiveChecklist = null,
@@ -363,13 +364,13 @@ public static class JsonReportBuilder
                         {
                             domain = "fitnessandmobility",
                             tests = fitnessTests,
-                            assessment = physicalPerformanceAssessmentParagraph ?? string.Empty
+                            assessment = fitnessMobilityAssessmentParagraph ?? string.Empty
                         },
                         new
                         {
                             domain = "strengthandstability",
                             tests = strengthTests,
-                            assessment = physicalPerformanceAssessmentParagraph ?? string.Empty
+                            assessment = strengthStabilityAssessmentParagraph ?? string.Empty
                         }
                     }
                 },

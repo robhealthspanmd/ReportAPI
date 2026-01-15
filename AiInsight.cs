@@ -1163,36 +1163,84 @@ DATA (JSON):
     }
 
     // -------- Physical performance narrative --------
-    public static async Task<string> GeneratePhysicalPerformanceAssessmentAsync(ReportRequest request, PerformanceAge.Result performanceResult)
+    public static Task<string> GenerateFitnessMobilityAssessmentAsync(ReportRequest request, PerformanceAge.Result performanceResult)
+    {
+        var data = new
+        {
+            chronologicalAgeYears = request.PhenoAge.ChronologicalAgeYears,
+            performanceAgeYears = performanceResult.PerformanceAge,
+            performanceDeltaYears = performanceResult.DeltaVsAgeYears,
+            performanceDeltaPercent = performanceResult.DeltaVsAgePercent,
+            tests = new
+            {
+                request.PerformanceAge.Vo2MaxPercentile,
+                performanceResult.HeartRateRecovery,
+                request.PerformanceAge.GaitSpeedComfortablePercentile,
+                request.PerformanceAge.GaitSpeedMaxPercentile,
+                performanceResult.TrunkEndurance,
+                performanceResult.PostureAssessment,
+                performanceResult.FloorToStandTest,
+                performanceResult.MobilityRom
+            }
+        };
+
+        return GeneratePhysicalPerformanceAssessmentAsync("Fitness and Mobility", data);
+    }
+
+    public static Task<string> GenerateStrengthStabilityAssessmentAsync(ReportRequest request, PerformanceAge.Result performanceResult)
+    {
+        var data = new
+        {
+            chronologicalAgeYears = request.PhenoAge.ChronologicalAgeYears,
+            performanceAgeYears = performanceResult.PerformanceAge,
+            performanceDeltaYears = performanceResult.DeltaVsAgeYears,
+            performanceDeltaPercent = performanceResult.DeltaVsAgePercent,
+            tests = new
+            {
+                request.PerformanceAge.QuadricepsStrengthPercentile,
+                performanceResult.HipStrength,
+                performanceResult.CalfStrength,
+                performanceResult.RotatorCuffIntegrity,
+                performanceResult.IsometricThighPullPercentile,
+                performanceResult.IsometricThighPull,
+                request.PerformanceAge.GripStrengthPercentile,
+                request.PerformanceAge.PowerPercentile,
+                request.PerformanceAge.BalancePercentile,
+                request.PerformanceAge.ChairRisePercentile,
+                performanceResult.ChairRiseFiveTimes,
+                performanceResult.ChairRiseThirtySeconds
+            }
+        };
+
+        return GeneratePhysicalPerformanceAssessmentAsync("Strength and Stability", data);
+    }
+
+    private static async Task<string> GeneratePhysicalPerformanceAssessmentAsync(string domainName, object data)
     {
         var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY");
         if (string.IsNullOrWhiteSpace(apiKey))
             throw new InvalidOperationException("Missing OPENAI_API_KEY env var.");
 
-        var system = """
-You are a clinician writing the “Physical Performance Assessment” section.
+        var system = $"""
+You are a clinician writing the “{domainName} Assessment” section.
 Never use the dash character in the output.
 This is an assessment-only narrative: do not prescribe exercise tactics, workouts, or step-by-step plans.
-You will be given performance inputs and computed outputs (including Performance Age, percentiles, and optional mobility/strength metrics).
+You will be given performance inputs and computed outputs relevant to {domainName}.
 
 Hard requirements:
 1) Use medical language and a clear, educated-patient tone.
 2) Start by stating what is OPTIMAL vs NOT OPTIMAL based on the findings and numbers.
 3) Focus on interpretation and clinical meaning; do not give specific tactics or training prescriptions.
 4) Do not invent tests or results that are not in the JSON.
-5) Multiple paragraphs. No bullet points.
+5) Only discuss the tests provided for {domainName}. Do not reference other physical performance domains.
+6) Multiple paragraphs. No bullet points.
 """;
 
         var user = $"""
-Write the physical performance assessment described above.
+Write the {domainName} assessment described above.
 
 DATA (JSON):
-{JsonSerializer.Serialize(new
-{
-    performanceInputs = request.PerformanceAge,
-    performanceResult = performanceResult,
-    chronologicalAgeYears = request.PhenoAge.ChronologicalAgeYears
-})}
+{JsonSerializer.Serialize(data)}
 """;
 
         var req = new

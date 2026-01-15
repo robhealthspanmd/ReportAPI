@@ -6,7 +6,6 @@ public static class LongevityMindset
     public const double ResilienceOptimalThreshold = 3.0;
     public const double OptimismOptimalThreshold = 13.0;
     public const double MeaningPresenceOptimalThreshold = 3.5;
-    public const double MeaningSearchHighThreshold = 5.5;
     private const double TrendDelta = 1.0;
 
     public sealed record Result(
@@ -48,20 +47,11 @@ public static class LongevityMindset
         string? optimismTrend = inputs.LifeOrientationTestPrior is null ? null : DetermineTrend(optimismScore, inputs.LifeOrientationTestPrior.Value);
         string optimismStatus = optimismScore < OptimismOptimalThreshold ? "Needs Attention" : "Optimal";
 
-        double? presenceScore = inputs.MeaningInLifePresence;
-        double? presenceMean = presenceScore is null ? null : presenceScore.Value / 5.0;
-        double? searchScore = inputs.MeaningInLifeSearch;
-        double? searchMean = searchScore is null ? null : searchScore.Value / 5.0;
+        double meaningScore = inputs.MeaningInLifeQuestionnaire / 10.0;
+        string? meaningTrend = null;
+        string meaningStatus = DetermineMeaningStatus(meaningScore);
 
-        double? presencePrior = inputs.MeaningInLifePresencePrior is null ? null : inputs.MeaningInLifePresencePrior.Value / 5.0;
-        double? searchPrior = inputs.MeaningInLifeSearchPrior is null ? null : inputs.MeaningInLifeSearchPrior.Value / 5.0;
-        string? meaningTrend = presencePrior is null && searchPrior is null
-            ? null
-            : DetermineMeaningTrend(presenceMean, presencePrior, searchMean, searchPrior);
-
-        string meaningStatus = DetermineMeaningStatus(presenceMean, searchMean);
-
-        bool hasMissing = presenceScore is null || searchScore is null;
+        bool hasMissing = false;
         bool anyNeedsAttention = resilienceStatus == "Needs Attention"
                                  || optimismStatus == "Needs Attention"
                                  || meaningStatus == "Needs Attention";
@@ -88,7 +78,7 @@ public static class LongevityMindset
             ),
             new DomainResult(
                 Domain: "Meaning in Life",
-                Score: presenceMean,
+                Score: meaningScore,
                 Status: meaningStatus,
                 Trend: meaningTrend
             )
@@ -113,31 +103,10 @@ public static class LongevityMindset
         return "Stable";
     }
 
-    private static string DetermineMeaningTrend(
-        double? presenceMean,
-        double? presencePrior,
-        double? searchMean,
-        double? searchPrior)
+    private static string DetermineMeaningStatus(double meaningScore)
     {
-        if (presenceMean is null && searchMean is null) return "Unknown";
-        if (presencePrior is null && searchPrior is null) return "Unknown";
-
-        bool presenceImproved = presenceMean is not null && presencePrior is not null && presenceMean >= presencePrior + TrendDelta;
-        bool presenceWorsened = presenceMean is not null && presencePrior is not null && presenceMean <= presencePrior - TrendDelta;
-        bool searchWorsened = searchMean is not null && searchPrior is not null && searchMean >= searchPrior + TrendDelta;
-        bool searchImproved = searchMean is not null && searchPrior is not null && searchMean <= searchPrior - TrendDelta;
-
-        if (presenceImproved || searchImproved) return "Improving";
-        if (presenceWorsened || searchWorsened) return "Worsening";
-        return "Stable";
-    }
-
-    private static string DetermineMeaningStatus(double? presenceMean, double? searchMean)
-    {
-        if (presenceMean is null || searchMean is null) return "Data Missing";
-        bool lowPresence = presenceMean < MeaningPresenceOptimalThreshold;
-        bool highSearchLowPresence = searchMean >= MeaningSearchHighThreshold && presenceMean < MeaningSearchHighThreshold;
-        return (lowPresence || highSearchLowPresence) ? "Needs Attention" : "Optimal";
+        bool lowMeaning = meaningScore < MeaningPresenceOptimalThreshold;
+        return lowMeaning ? "Needs Attention" : "Optimal";
     }
 
     private static string BuildSummary(string overallStatus, bool hasMissing, IEnumerable<string?> trends)
