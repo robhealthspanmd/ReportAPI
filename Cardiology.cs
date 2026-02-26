@@ -16,7 +16,7 @@ public static class Cardiology
             return null;
 
         int? bpScore = ScoreBloodPressure(health.SystolicBP, health.DiastolicBP);
-        int? nonHdlScore = ScoreNonHdl(health.NonHdlMgDl, cardio.CoronaryPlaqueSeverity);
+        int? nonHdlScore = ScoreNonHdl(health.NonHdlMgDl, health.NonHdlRiskGroup, cardio.CoronaryPlaqueSeverity);
         int? homaScore = ScoreHomaIr(GetHomaIr(health));
         int? fitnessScore = ScoreFitnessPercentile(performance.Vo2MaxPercentile);
         int? visceralFatScore = ScoreVisceralFatPercentile(health.VisceralFatPercentile);
@@ -279,6 +279,13 @@ public static class Cardiology
         // Keep the old SEVERE behavior for "clinical ASCVD history" so the existing narrative stays consistent.
         bool triggeredClinical = x.HasClinicalAscVDHistory == true;
 
+        // Established ASCVD should never appear as an "optimal" total score.
+        // Keep modifiable progress visible, but cap the final score below the 80+ band.
+        if (triggeredClinical)
+        {
+            total = Math.Min(total, 79);
+        }
+
         string legacyRiskCategory;
         if (triggeredClinical)
         {
@@ -468,12 +475,15 @@ public static class Cardiology
         return null;
     }
 
-    private static int? ScoreNonHdl(double? nonHdlMgDl, string? coronaryPlaqueSeverity)
+    private static int? ScoreNonHdl(double? nonHdlMgDl, string? nonHdlRiskGroup, string? coronaryPlaqueSeverity)
     {
         if (!nonHdlMgDl.HasValue)
             return null;
 
-        var riskCategory = MapPlaqueRiskCategory(coronaryPlaqueSeverity);
+        var fromCoronaryPlaque = MapPlaqueRiskCategory(coronaryPlaqueSeverity);
+        var fromNonHdlRiskGroup = MapNonHdlRiskCategory(nonHdlRiskGroup);
+
+        var riskCategory = PickWorstRiskCategory(fromCoronaryPlaque, fromNonHdlRiskGroup);
         if (riskCategory is null)
             return null;
 
@@ -617,6 +627,30 @@ public static class Cardiology
         };
     }
 
+
+    private static PlaqueRiskCategory? MapNonHdlRiskCategory(string? nonHdlRiskGroup)
+    {
+        if (string.IsNullOrWhiteSpace(nonHdlRiskGroup))
+            return null;
+
+        string group = nonHdlRiskGroup.Trim().ToLowerInvariant();
+        return group switch
+        {
+            "low" => PlaqueRiskCategory.Low,
+            "moderate" => PlaqueRiskCategory.Intermediate,
+            "high" => PlaqueRiskCategory.High,
+            _ => null
+        };
+    }
+
+    private static PlaqueRiskCategory? PickWorstRiskCategory(PlaqueRiskCategory? a, PlaqueRiskCategory? b)
+    {
+        if (!a.HasValue) return b;
+        if (!b.HasValue) return a;
+
+        return (PlaqueRiskCategory)Math.Max((int)a.Value, (int)b.Value);
+    }
+
     private static string BuildExplanation(
         BaseCat baselineCategory,
         int baselineScore,
@@ -649,6 +683,7 @@ public static class Cardiology
         if (triggeredClinicalAscVD)
         {
             why += " Clinical ASCVD history was indicated, which elevates overall concern regardless of imaging score.";
+            why += " To prevent false reassurance, the total Heart Health Score is capped below the optimal range when established ASCVD is present.";
         }
 
         int missingCount = (missingEf ? 1 : 0) + (missingStructure ? 1 : 0) + (missingDuke ? 1 : 0) + (missingEcg ? 1 : 0);
