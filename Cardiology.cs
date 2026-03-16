@@ -16,7 +16,11 @@ public static class Cardiology
             return null;
 
         int? bpScore = ScoreBloodPressure(health.SystolicBP, health.DiastolicBP);
-        int? nonHdlScore = ScoreNonHdl(health.NonHdlMgDl, cardio.CoronaryPlaqueSeverity);
+        int? nonHdlScore = ScoreNonHdl(
+            health.NonHdlMgDl,
+            health.NonHdlRiskGroup,
+            cardio.CoronaryPlaqueSeverity,
+            cardio.CarotidPlaqueSeverity);
         int? homaScore = ScoreHomaIr(GetHomaIr(health));
         int? fitnessScore = ScoreFitnessPercentile(performance.Vo2MaxPercentile);
         int? visceralFatScore = ScoreVisceralFatPercentile(health.VisceralFatPercentile);
@@ -468,12 +472,19 @@ public static class Cardiology
         return null;
     }
 
-    private static int? ScoreNonHdl(double? nonHdlMgDl, string? coronaryPlaqueSeverity)
+    private static int? ScoreNonHdl(
+        double? nonHdlMgDl,
+        string? nonHdlRiskGroup,
+        string? coronaryPlaqueSeverity,
+        string? carotidPlaqueSeverity)
     {
         if (!nonHdlMgDl.HasValue)
             return null;
 
-        var riskCategory = MapPlaqueRiskCategory(coronaryPlaqueSeverity);
+        var riskCategory = ResolveWorstRiskCategory(
+            nonHdlRiskGroup,
+            coronaryPlaqueSeverity,
+            carotidPlaqueSeverity);
         if (riskCategory is null)
             return null;
 
@@ -599,6 +610,44 @@ public static class Cardiology
         Low,
         Intermediate,
         High
+    }
+
+    private static PlaqueRiskCategory? ResolveWorstRiskCategory(
+        string? nonHdlRiskGroup,
+        string? coronaryPlaqueSeverity,
+        string? carotidPlaqueSeverity)
+    {
+        var fromNonHdlRiskGroup = MapNonHdlRiskGroup(nonHdlRiskGroup);
+        var fromCoronaryPlaque = MapPlaqueRiskCategory(coronaryPlaqueSeverity);
+        var fromCarotidPlaque = MapPlaqueRiskCategory(carotidPlaqueSeverity);
+
+        PlaqueRiskCategory? worst = null;
+
+        if (fromNonHdlRiskGroup.HasValue)
+            worst = fromNonHdlRiskGroup.Value;
+
+        if (fromCoronaryPlaque.HasValue && (!worst.HasValue || fromCoronaryPlaque.Value > worst.Value))
+            worst = fromCoronaryPlaque.Value;
+
+        if (fromCarotidPlaque.HasValue && (!worst.HasValue || fromCarotidPlaque.Value > worst.Value))
+            worst = fromCarotidPlaque.Value;
+
+        return worst;
+    }
+
+    private static PlaqueRiskCategory? MapNonHdlRiskGroup(string? nonHdlRiskGroup)
+    {
+        if (string.IsNullOrWhiteSpace(nonHdlRiskGroup))
+            return null;
+
+        string group = nonHdlRiskGroup.Trim().ToLowerInvariant();
+        return group switch
+        {
+            "low" or "1" => PlaqueRiskCategory.Low,
+            "moderate" or "2" => PlaqueRiskCategory.Intermediate,
+            "high" or "3" => PlaqueRiskCategory.High,
+            _ => null
+        };
     }
 
     private static PlaqueRiskCategory? MapPlaqueRiskCategory(string? coronaryPlaqueSeverity)
