@@ -52,8 +52,8 @@ double? HemoglobinA1c
     public sealed record Result(
         double SumContributionYears,     // ΣZ years (B7)
         double HealthAgeUncapped,        // Pheno + ΣZ (B8)
-        double ContributionYearsScaled,  // ΣZ * 0.3 (B9)
-        double HealthAgeFinal,           // Pheno + ΣZ*0.3 (B10)
+        double ContributionYearsScaled,  // ΣZ scaled to a max 20% total-age effect (B9)
+        double HealthAgeFinal,           // Pheno + capped/scaled ΣZ adjustment (B10)
         double DeltaVsChronoYears,       // (B11)
         double DeltaVsChronoPercent,     // (B12)
 
@@ -196,7 +196,8 @@ double? HemoglobinA1c
             (z8?.ContributionYears ?? 0);
 
         double healthAgeUncapped = x.PhenotypicAgeYears + sumYears;
-        double scaled = sumYears * 0.3;               // <-- matches Excel B9
+        double maxTotalEffectYears = x.ChronologicalAgeYears * 0.20;
+        double scaled = Math.Clamp(sumYears, -maxTotalEffectYears, maxTotalEffectYears);
         double healthAgeFinal = x.PhenotypicAgeYears + scaled;
 
         double deltaYears = healthAgeFinal - x.ChronologicalAgeYears;
