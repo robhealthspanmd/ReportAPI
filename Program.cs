@@ -189,7 +189,7 @@ app.MapPost("/api/report.json", async (HttpContext http) =>
     // 5) Run deterministic calculators (same as before)
     var pheno = PhenoAge.Calculate(req.PhenoAge);
 
-    var healthInputs = req.HealthAge with { PhenotypicAgeYears = pheno.PhenotypicAgeYears };
+    var healthInputs = req.HealthAge;
     var health = HealthAge.Calculate(healthInputs);
 
     var performanceCore = PerformanceAge.Calculate(req.PerformanceAge);
