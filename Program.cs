@@ -549,14 +549,24 @@ static void NormalizePerformanceAge(JsonObject root)
 
 static void NormalizeHealthAge(JsonObject root)
 {
-    if (!root.TryGetPropertyValue("healthAge", out var healthNode) ||
-        healthNode is not JsonObject healthObj)
+    JsonObject? healthObj = null;
+
+    if (root.TryGetPropertyValue("healthAge", out var healthNode) && healthNode is JsonObject lowerCase)
     {
-        return;
+        healthObj = lowerCase;
     }
+    else if (root.TryGetPropertyValue("HealthAge", out var healthNodePascal) && healthNodePascal is JsonObject pascalCase)
+    {
+        healthObj = pascalCase;
+    }
+
+    if (healthObj is null)
+        return;
 
     CopyIfMissing(healthObj, "phenotypicAgeYears", "biologicalAgeYears");
     CopyIfMissing(healthObj, "phenotypicAgeYears", "biologicalAge");
+    CopyIfMissing(healthObj, "PhenotypicAgeYears", "BiologicalAgeYears");
+    CopyIfMissing(healthObj, "PhenotypicAgeYears", "BiologicalAge");
 }
 
 static void CopyIfMissing(JsonObject obj, string target, string source)
