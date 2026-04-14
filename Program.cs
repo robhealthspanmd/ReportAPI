@@ -189,7 +189,7 @@ app.MapPost("/api/report.json", async (HttpContext http) =>
     // 5) Run deterministic calculators (same as before)
     var pheno = PhenoAge.Calculate(req.PhenoAge);
 
-    var healthInputs = req.HealthAge with { PhenotypicAgeYears = pheno.PhenotypicAgeYears };
+    var healthInputs = req.HealthAge;
     var health = HealthAge.Calculate(healthInputs);
 
     var performanceCore = PerformanceAge.Calculate(req.PerformanceAge);
@@ -530,6 +530,7 @@ static JsonDocument NormalizeReportJson(JsonElement root)
         return JsonDocument.Parse(root.GetRawText());
 
     NormalizePerformanceAge(node);
+    NormalizeHealthAge(node);
     return JsonDocument.Parse(node.ToJsonString());
 }
 
@@ -544,6 +545,18 @@ static void NormalizePerformanceAge(JsonObject root)
     CopyIfMissing(perfObj, "quadricepsStrengthPercentile", "quadStrengthPercentile");
     CopyIfMissing(perfObj, "gaitSpeedComfortablePercentile", "comfortableGaitSpeedPercentile");
     CopyIfMissing(perfObj, "gaitSpeedMaxPercentile", "maximalGaitSpeedPercentile");
+}
+
+static void NormalizeHealthAge(JsonObject root)
+{
+    if (!root.TryGetPropertyValue("healthAge", out var healthNode) ||
+        healthNode is not JsonObject healthObj)
+    {
+        return;
+    }
+
+    CopyIfMissing(healthObj, "phenotypicAgeYears", "biologicalAgeYears");
+    CopyIfMissing(healthObj, "phenotypicAgeYears", "biologicalAge");
 }
 
 static void CopyIfMissing(JsonObject obj, string target, string source)
