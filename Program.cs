@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -8,7 +9,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("lovable", policy =>
-        policy.AllowAnyOrigin()
+        policy.SetIsOriginAllowed(_ => true)
+              .AllowCredentials()
               .AllowAnyHeader()
               .AllowAnyMethod());
 });
@@ -545,6 +547,11 @@ static void NormalizePerformanceAge(JsonObject root)
     CopyIfMissing(perfObj, "quadricepsStrengthPercentile", "quadStrengthPercentile");
     CopyIfMissing(perfObj, "gaitSpeedComfortablePercentile", "comfortableGaitSpeedPercentile");
     CopyIfMissing(perfObj, "gaitSpeedMaxPercentile", "maximalGaitSpeedPercentile");
+
+    // Spec aliases: PPA score uses LOWER (right/left) for quad, grip, and balance.
+    SetMinPercentileIfMissing(perfObj, "quadricepsStrengthPercentile", "quadStrengthRightPercentile", "quadStrengthLeftPercentile");
+    SetMinPercentileIfMissing(perfObj, "gripStrengthPercentile", "gripStrengthRightPercentile", "gripStrengthLeftPercentile");
+    SetMinPercentileIfMissing(perfObj, "balancePercentile", "balanceRightPercentile", "balanceLeftPercentile");
 }
 
 static void NormalizeHealthAge(JsonObject root)

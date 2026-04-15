@@ -29,7 +29,7 @@ public static class MentallyEmotionallyWell
     public sealed record DomainSummary(
         string Status,
         string Trend,
-        double CurrentScore,
+        double? CurrentScore,
         double? PriorScore
     );
 
@@ -111,16 +111,18 @@ public static class MentallyEmotionallyWell
         );
     }
 
-    private static string DetermineTrend(double current, double? prior)
+    private static string DetermineTrend(double? current, double? prior)
     {
-        if (prior is null) return "Unknown";
+        if (current is null || prior is null) return "Unknown";
         if (current <= prior.Value - TrendDelta) return "Improving";
         if (current >= prior.Value + TrendDelta) return "Worsening";
         return "Stable";
     }
 
-    private static string DetermineStatus(double current, string trend, double normalUpper)
+    private static string DetermineStatus(double? current, string trend, double normalUpper)
     {
+        if (current is null) return "Optimal";
+
         bool elevated = current > normalUpper;
         bool worsening = trend == "Worsening";
         return (elevated || worsening) ? "Needs Attention" : "Optimal";

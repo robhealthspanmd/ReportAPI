@@ -10,8 +10,8 @@ public static class BrainHealth
         double LifeOrientationTest_R,       // B8 (range 0–24)
         double MeaningInLifeQuestionnaire,  // MLQ total (10–70)
         double FlourishingScale,            // Flourishing total (8–56)
-        double PromisSleepDisturbance,      // PROMIS Sleep Disturbance T-score
-        double PerceivedStressScore,        // PSS raw score (0–40 typical)
+        double? PromisSleepDisturbance,     // PROMIS Sleep Disturbance T-score
+        double? PerceivedStressScore,       // PSS raw score (0–40 typical)
         double? CognitiveFunctionPrior,     // BrainCheck percentile prior (optional)
         string? ApoE4Status = null,         // Genetic risk (optional)
         string? FamilyHistoryDementia = null, // Family history (optional)
@@ -98,12 +98,45 @@ public static class BrainHealth
             x.PromisAnxiety_8a < 60 ? 90 :
             x.PromisAnxiety_8a < 70 ? 40 : 20;
 
-        double stressSub = x.PerceivedStressScore <= 13 ? 100 :
-            x.PerceivedStressScore <= 26 ? 70 : 30;
+        double stressSub;
+        if (!x.PerceivedStressScore.HasValue)
+        {
+            stressSub = 70;
+        }
+        else if (x.PerceivedStressScore.Value <= 13)
+        {
+            stressSub = 100;
+        }
+        else if (x.PerceivedStressScore.Value <= 26)
+        {
+            stressSub = 70;
+        }
+        else
+        {
+            stressSub = 30;
+        }
 
-        double sleepSub = x.PromisSleepDisturbance <= 55 ? 100 :
-            x.PromisSleepDisturbance < 60 ? 90 :
-            x.PromisSleepDisturbance < 70 ? 40 : 20;
+        double sleepSub;
+        if (!x.PromisSleepDisturbance.HasValue)
+        {
+            sleepSub = 70;
+        }
+        else if (x.PromisSleepDisturbance.Value <= 55)
+        {
+            sleepSub = 100;
+        }
+        else if (x.PromisSleepDisturbance.Value < 60)
+        {
+            sleepSub = 90;
+        }
+        else if (x.PromisSleepDisturbance.Value < 70)
+        {
+            sleepSub = 40;
+        }
+        else
+        {
+            sleepSub = 20;
+        }
 
         double brsMean = x.BriefResilienceScale / 6.0;
         double resilienceSub = brsMean > 4.31 ? 100 :
