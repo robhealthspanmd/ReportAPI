@@ -10,8 +10,8 @@ public static class BrainHealth
         double LifeOrientationTest_R,       // B8 (range 0–24)
         double MeaningInLifeQuestionnaire,  // MLQ total (10–70)
         double FlourishingScale,            // Flourishing total (8–56)
-        double PromisSleepDisturbance,      // PROMIS Sleep Disturbance T-score
-        double PerceivedStressScore,        // PSS raw score (0–40 typical)
+        double? PromisSleepDisturbance,     // PROMIS Sleep Disturbance T-score
+        double? PerceivedStressScore,       // PSS raw score (0–40 typical)
         double? CognitiveFunctionPrior,     // BrainCheck percentile prior (optional)
         string? ApoE4Status = null,         // Genetic risk (optional)
         string? FamilyHistoryDementia = null, // Family history (optional)
@@ -98,10 +98,12 @@ public static class BrainHealth
             x.PromisAnxiety_8a < 60 ? 90 :
             x.PromisAnxiety_8a < 70 ? 40 : 20;
 
-        double stressSub = x.PerceivedStressScore <= 13 ? 100 :
+        double stressSub = x.PerceivedStressScore is null ? 70 :
+            x.PerceivedStressScore <= 13 ? 100 :
             x.PerceivedStressScore <= 26 ? 70 : 30;
 
-        double sleepSub = x.PromisSleepDisturbance <= 55 ? 100 :
+        double sleepSub = x.PromisSleepDisturbance is null ? 70 :
+            x.PromisSleepDisturbance <= 55 ? 100 :
             x.PromisSleepDisturbance < 60 ? 90 :
             x.PromisSleepDisturbance < 70 ? 40 : 20;
 
