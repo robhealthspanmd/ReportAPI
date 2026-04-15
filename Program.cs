@@ -237,7 +237,7 @@ app.MapPost("/api/report.json", async (HttpContext http) =>
     var summaryForAi = new
     {
         chronologicalAgeYears = req.PhenoAge.ChronologicalAgeYears,
-        phenotypicAgeYears = pheno.PhenotypicAgeYears,
+        phenotypicAgeYears = (double?)null,
         mortality10Yr = pheno.Mortality10Yr,
         healthAgeYears = health.HealthAgeFinal,
         healthDeltaYears = health.DeltaVsChronoYears,
@@ -563,10 +563,8 @@ static void NormalizeHealthAge(JsonObject root)
     if (healthObj is null)
         return;
 
-    CopyIfMissing(healthObj, "phenotypicAgeYears", "biologicalAgeYears");
-    CopyIfMissing(healthObj, "phenotypicAgeYears", "biologicalAge");
-    CopyIfMissing(healthObj, "PhenotypicAgeYears", "BiologicalAgeYears");
-    CopyIfMissing(healthObj, "PhenotypicAgeYears", "BiologicalAge");
+    NullOutIfPresent(healthObj, "phenotypicAgeYears");
+    NullOutIfPresent(healthObj, "PhenotypicAgeYears");
 }
 
 static void CopyIfMissing(JsonObject obj, string target, string source)
@@ -577,6 +575,14 @@ static void CopyIfMissing(JsonObject obj, string target, string source)
     if (obj.TryGetPropertyValue(source, out var value) && value is not null)
     {
         obj[target] = value.DeepClone();
+    }
+}
+
+static void NullOutIfPresent(JsonObject obj, string key)
+{
+    if (obj.ContainsKey(key))
+    {
+        obj[key] = null;
     }
 }
 
