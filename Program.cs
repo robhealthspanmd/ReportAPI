@@ -547,8 +547,6 @@ static void NormalizePerformanceAge(JsonObject root)
     CopyIfMissing(perfObj, "quadricepsStrengthPercentile", "quadStrengthPercentile");
     CopyIfMissing(perfObj, "gaitSpeedComfortablePercentile", "comfortableGaitSpeedPercentile");
     CopyIfMissing(perfObj, "gaitSpeedMaxPercentile", "maximalGaitSpeedPercentile");
-
-    // Spec aliases: PPA score uses LOWER (right/left) for quad, grip, and balance.
     SetMinPercentileIfMissing(perfObj, "quadricepsStrengthPercentile", "quadStrengthRightPercentile", "quadStrengthLeftPercentile");
     SetMinPercentileIfMissing(perfObj, "gripStrengthPercentile", "gripStrengthRightPercentile", "gripStrengthLeftPercentile");
     SetMinPercentileIfMissing(perfObj, "balancePercentile", "balanceRightPercentile", "balanceLeftPercentile");
@@ -591,6 +589,41 @@ static void NullOutIfPresent(JsonObject obj, string key)
     {
         obj[key] = null;
     }
+}
+
+static void SetMinPercentileIfMissing(JsonObject obj, string target, string rightKey, string leftKey)
+{
+    if (obj.ContainsKey(target))
+        return;
+
+    var right = ReadNumericNode(obj, rightKey);
+    var left = ReadNumericNode(obj, leftKey);
+
+    if (right.HasValue && left.HasValue)
+    {
+        obj[target] = Math.Min(right.Value, left.Value);
+    }
+}
+
+static double? ReadNumericNode(JsonObject obj, string key)
+{
+    if (!obj.TryGetPropertyValue(key, out var node) || node is null)
+        return null;
+
+    if (node is JsonValue value)
+    {
+        if (value.TryGetValue<double>(out var number))
+            return number;
+
+        if (value.TryGetValue<string>(out var text) &&
+            !string.IsNullOrWhiteSpace(text) &&
+            double.TryParse(text, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out var parsed))
+        {
+            return parsed;
+        }
+    }
+
+    return null;
 }
 
 sealed class PerformanceExtras
