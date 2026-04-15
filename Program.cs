@@ -545,6 +545,11 @@ static void NormalizePerformanceAge(JsonObject root)
     CopyIfMissing(perfObj, "quadricepsStrengthPercentile", "quadStrengthPercentile");
     CopyIfMissing(perfObj, "gaitSpeedComfortablePercentile", "comfortableGaitSpeedPercentile");
     CopyIfMissing(perfObj, "gaitSpeedMaxPercentile", "maximalGaitSpeedPercentile");
+
+    // Spec aliases: PPA score uses LOWER (right/left) for quad, grip, and balance.
+    SetMinPercentileIfMissing(perfObj, "quadricepsStrengthPercentile", "quadStrengthRightPercentile", "quadStrengthLeftPercentile");
+    SetMinPercentileIfMissing(perfObj, "gripStrengthPercentile", "gripStrengthRightPercentile", "gripStrengthLeftPercentile");
+    SetMinPercentileIfMissing(perfObj, "balancePercentile", "balanceRightPercentile", "balanceLeftPercentile");
 }
 
 static void NormalizeHealthAge(JsonObject root)
@@ -567,6 +572,7 @@ static void NormalizeHealthAge(JsonObject root)
     CopyIfMissing(healthObj, "phenotypicAgeYears", "biologicalAge");
     CopyIfMissing(healthObj, "PhenotypicAgeYears", "BiologicalAgeYears");
     CopyIfMissing(healthObj, "PhenotypicAgeYears", "BiologicalAge");
+    CopyIfMissing(healthObj, "appendicularLeanMass", "appendicularleanmass");
 }
 
 static void CopyIfMissing(JsonObject obj, string target, string source)
@@ -578,6 +584,35 @@ static void CopyIfMissing(JsonObject obj, string target, string source)
     {
         obj[target] = value.DeepClone();
     }
+}
+
+static void SetMinPercentileIfMissing(JsonObject obj, string target, string sourceA, string sourceB)
+{
+    if (obj.ContainsKey(target))
+        return;
+
+    var a = ReadDoubleFromNode(obj, sourceA);
+    var b = ReadDoubleFromNode(obj, sourceB);
+
+    if (a is null || b is null)
+        return;
+
+    obj[target] = Math.Min(a.Value, b.Value);
+}
+
+static double? ReadDoubleFromNode(JsonObject obj, string name)
+{
+    if (!obj.TryGetPropertyValue(name, out var node) || node is null)
+        return null;
+
+    return node switch
+    {
+        JsonValue value when value.TryGetValue<double>(out var d) => d,
+        JsonValue value when value.TryGetValue<string>(out var s) &&
+                              !string.IsNullOrWhiteSpace(s) &&
+                              double.TryParse(s, out var parsed) => parsed,
+        _ => null
+    };
 }
 
 sealed class PerformanceExtras
