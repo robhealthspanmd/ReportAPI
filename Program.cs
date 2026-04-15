@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -8,7 +9,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("lovable", policy =>
-        policy.AllowAnyOrigin()
+        policy.SetIsOriginAllowed(_ => true)
+              .AllowCredentials()
               .AllowAnyHeader()
               .AllowAnyMethod());
 });
@@ -545,6 +547,11 @@ static void NormalizePerformanceAge(JsonObject root)
     CopyIfMissing(perfObj, "quadricepsStrengthPercentile", "quadStrengthPercentile");
     CopyIfMissing(perfObj, "gaitSpeedComfortablePercentile", "comfortableGaitSpeedPercentile");
     CopyIfMissing(perfObj, "gaitSpeedMaxPercentile", "maximalGaitSpeedPercentile");
+
+    // Spec aliases: PPA score uses LOWER (right/left) for quad, grip, and balance.
+    SetMinPercentileIfMissing(perfObj, "quadricepsStrengthPercentile", "quadStrengthRightPercentile", "quadStrengthLeftPercentile");
+    SetMinPercentileIfMissing(perfObj, "gripStrengthPercentile", "gripStrengthRightPercentile", "gripStrengthLeftPercentile");
+    SetMinPercentileIfMissing(perfObj, "balancePercentile", "balanceRightPercentile", "balanceLeftPercentile");
 }
 
 static void NormalizeHealthAge(JsonObject root)
@@ -567,6 +574,7 @@ static void NormalizeHealthAge(JsonObject root)
     CopyIfMissing(healthObj, "phenotypicAgeYears", "biologicalAge");
     CopyIfMissing(healthObj, "PhenotypicAgeYears", "BiologicalAgeYears");
     CopyIfMissing(healthObj, "PhenotypicAgeYears", "BiologicalAge");
+    CopyIfMissing(healthObj, "appendicularLeanMass", "appendicularleanmass");
 }
 
 static void CopyIfMissing(JsonObject obj, string target, string source)
@@ -578,6 +586,41 @@ static void CopyIfMissing(JsonObject obj, string target, string source)
     {
         obj[target] = value.DeepClone();
     }
+}
+
+static void SetMinPercentileIfMissing(JsonObject obj, string target, string sourceA, string sourceB)
+{
+    if (obj.ContainsKey(target))
+        return;
+
+    var a = ReadDoubleFromNode(obj, sourceA);
+    var b = ReadDoubleFromNode(obj, sourceB);
+
+    if (a is null || b is null)
+        return;
+
+    obj[target] = Math.Min(a.Value, b.Value);
+}
+
+static double? ReadDoubleFromNode(JsonObject obj, string name)
+{
+    if (!obj.TryGetPropertyValue(name, out var node) || node is null)
+        return null;
+
+    if (node is not JsonValue value)
+        return null;
+
+    if (value.TryGetValue<double>(out var d))
+        return d;
+
+    if (value.TryGetValue<string>(out var s) &&
+        !string.IsNullOrWhiteSpace(s) &&
+        double.TryParse(s, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out var parsed))
+    {
+        return parsed;
+    }
+
+    return null;
 }
 
 sealed class PerformanceExtras
