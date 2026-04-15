@@ -568,8 +568,8 @@ static void NormalizeHealthAge(JsonObject root)
     if (healthObj is null)
         return;
 
-    NullOutIfPresent(healthObj, "phenotypicAgeYears");
-    NullOutIfPresent(healthObj, "PhenotypicAgeYears");
+    RemoveIfPresent(healthObj, "phenotypicAgeYears");
+    RemoveIfPresent(healthObj, "PhenotypicAgeYears");
 }
 
 static void CopyIfMissing(JsonObject obj, string target, string source)
@@ -583,11 +583,11 @@ static void CopyIfMissing(JsonObject obj, string target, string source)
     }
 }
 
-static void NullOutIfPresent(JsonObject obj, string key)
+static void RemoveIfPresent(JsonObject obj, string key)
 {
     if (obj.ContainsKey(key))
     {
-        obj[key] = null;
+        obj.Remove(key);
     }
 }
 

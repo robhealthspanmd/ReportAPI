@@ -4,7 +4,7 @@ public static class HealthAge
 {
     public sealed record Inputs(
         double ChronologicalAgeYears,     // B3
-        double PhenotypicAgeYears,
+        double? PhenotypicAgeYears,
         string Sex,        // B4 (already computed via PhenoAge endpoint)
 
         // Z1–Z3 percentiles (0–100)
