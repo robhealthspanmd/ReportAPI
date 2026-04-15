@@ -239,7 +239,7 @@ app.MapPost("/api/report.json", async (HttpContext http) =>
     var summaryForAi = new
     {
         chronologicalAgeYears = req.PhenoAge.ChronologicalAgeYears,
-        phenotypicAgeYears = pheno.PhenotypicAgeYears,
+        phenotypicAgeYears = req.HealthAge.PhenotypicAgeYears,
         mortality10Yr = pheno.Mortality10Yr,
         healthAgeYears = health.HealthAgeFinal,
         healthDeltaYears = health.DeltaVsChronoYears,
