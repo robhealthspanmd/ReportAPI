@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -605,14 +606,20 @@ static double? ReadDoubleFromNode(JsonObject obj, string name)
     if (!obj.TryGetPropertyValue(name, out var node) || node is null)
         return null;
 
-    return node switch
+    if (node is not JsonValue value)
+        return null;
+
+    if (value.TryGetValue<double>(out var d))
+        return d;
+
+    if (value.TryGetValue<string>(out var s) &&
+        !string.IsNullOrWhiteSpace(s) &&
+        double.TryParse(s, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out var parsed))
     {
-        JsonValue value when value.TryGetValue<double>(out var d) => d,
-        JsonValue value when value.TryGetValue<string>(out var s) &&
-                              !string.IsNullOrWhiteSpace(s) &&
-                              double.TryParse(s, out var parsed) => parsed,
-        _ => null
-    };
+        return parsed;
+    }
+
+    return null;
 }
 
 sealed class PerformanceExtras
