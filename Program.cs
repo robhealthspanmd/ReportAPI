@@ -239,7 +239,7 @@ app.MapPost("/api/report.json", async (HttpContext http) =>
     var summaryForAi = new
     {
         chronologicalAgeYears = req.PhenoAge.ChronologicalAgeYears,
-        phenotypicAgeYears = req.HealthAge.PhenotypicAgeYears,
+        phenotypicAgeYears = (double?)null,
         mortality10Yr = pheno.Mortality10Yr,
         healthAgeYears = health.HealthAgeFinal,
         healthDeltaYears = health.DeltaVsChronoYears,
@@ -570,11 +570,8 @@ static void NormalizeHealthAge(JsonObject root)
     if (healthObj is null)
         return;
 
-    CopyIfMissing(healthObj, "phenotypicAgeYears", "biologicalAgeYears");
-    CopyIfMissing(healthObj, "phenotypicAgeYears", "biologicalAge");
-    CopyIfMissing(healthObj, "PhenotypicAgeYears", "BiologicalAgeYears");
-    CopyIfMissing(healthObj, "PhenotypicAgeYears", "BiologicalAge");
-    CopyIfMissing(healthObj, "appendicularLeanMass", "appendicularleanmass");
+    NullOutIfPresent(healthObj, "phenotypicAgeYears");
+    NullOutIfPresent(healthObj, "PhenotypicAgeYears");
 }
 
 static void CopyIfMissing(JsonObject obj, string target, string source)
@@ -588,39 +585,12 @@ static void CopyIfMissing(JsonObject obj, string target, string source)
     }
 }
 
-static void SetMinPercentileIfMissing(JsonObject obj, string target, string sourceA, string sourceB)
+static void NullOutIfPresent(JsonObject obj, string key)
 {
-    if (obj.ContainsKey(target))
-        return;
-
-    var a = ReadDoubleFromNode(obj, sourceA);
-    var b = ReadDoubleFromNode(obj, sourceB);
-
-    if (a is null || b is null)
-        return;
-
-    obj[target] = Math.Min(a.Value, b.Value);
-}
-
-static double? ReadDoubleFromNode(JsonObject obj, string name)
-{
-    if (!obj.TryGetPropertyValue(name, out var node) || node is null)
-        return null;
-
-    if (node is not JsonValue value)
-        return null;
-
-    if (value.TryGetValue<double>(out var d))
-        return d;
-
-    if (value.TryGetValue<string>(out var s) &&
-        !string.IsNullOrWhiteSpace(s) &&
-        double.TryParse(s, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out var parsed))
+    if (obj.ContainsKey(key))
     {
-        return parsed;
+        obj[key] = null;
     }
-
-    return null;
 }
 
 sealed class PerformanceExtras
