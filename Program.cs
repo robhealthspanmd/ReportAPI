@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -237,7 +238,7 @@ app.MapPost("/api/report.json", async (HttpContext http) =>
     var summaryForAi = new
     {
         chronologicalAgeYears = req.PhenoAge.ChronologicalAgeYears,
-        phenotypicAgeYears = pheno.PhenotypicAgeYears,
+        phenotypicAgeYears = (double?)null,
         mortality10Yr = pheno.Mortality10Yr,
         healthAgeYears = health.HealthAgeFinal,
         healthDeltaYears = health.DeltaVsChronoYears,
@@ -545,6 +546,9 @@ static void NormalizePerformanceAge(JsonObject root)
     CopyIfMissing(perfObj, "quadricepsStrengthPercentile", "quadStrengthPercentile");
     CopyIfMissing(perfObj, "gaitSpeedComfortablePercentile", "comfortableGaitSpeedPercentile");
     CopyIfMissing(perfObj, "gaitSpeedMaxPercentile", "maximalGaitSpeedPercentile");
+    SetMinPercentileIfMissing(perfObj, "quadricepsStrengthPercentile", "quadStrengthRightPercentile", "quadStrengthLeftPercentile");
+    SetMinPercentileIfMissing(perfObj, "gripStrengthPercentile", "gripStrengthRightPercentile", "gripStrengthLeftPercentile");
+    SetMinPercentileIfMissing(perfObj, "balancePercentile", "balanceRightPercentile", "balanceLeftPercentile");
 }
 
 static void NormalizeHealthAge(JsonObject root)
@@ -563,10 +567,8 @@ static void NormalizeHealthAge(JsonObject root)
     if (healthObj is null)
         return;
 
-    CopyIfMissing(healthObj, "phenotypicAgeYears", "biologicalAgeYears");
-    CopyIfMissing(healthObj, "phenotypicAgeYears", "biologicalAge");
-    CopyIfMissing(healthObj, "PhenotypicAgeYears", "BiologicalAgeYears");
-    CopyIfMissing(healthObj, "PhenotypicAgeYears", "BiologicalAge");
+    NullOutIfPresent(healthObj, "phenotypicAgeYears");
+    NullOutIfPresent(healthObj, "PhenotypicAgeYears");
 }
 
 static void CopyIfMissing(JsonObject obj, string target, string source)
@@ -578,6 +580,49 @@ static void CopyIfMissing(JsonObject obj, string target, string source)
     {
         obj[target] = value.DeepClone();
     }
+}
+
+static void NullOutIfPresent(JsonObject obj, string key)
+{
+    if (obj.ContainsKey(key))
+    {
+        obj[key] = null;
+    }
+}
+
+static void SetMinPercentileIfMissing(JsonObject obj, string target, string rightKey, string leftKey)
+{
+    if (obj.ContainsKey(target))
+        return;
+
+    var right = ReadNumericNode(obj, rightKey);
+    var left = ReadNumericNode(obj, leftKey);
+
+    if (right.HasValue && left.HasValue)
+    {
+        obj[target] = Math.Min(right.Value, left.Value);
+    }
+}
+
+static double? ReadNumericNode(JsonObject obj, string key)
+{
+    if (!obj.TryGetPropertyValue(key, out var node) || node is null)
+        return null;
+
+    if (node is JsonValue value)
+    {
+        if (value.TryGetValue<double>(out var number))
+            return number;
+
+        if (value.TryGetValue<string>(out var text) &&
+            !string.IsNullOrWhiteSpace(text) &&
+            double.TryParse(text, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out var parsed))
+        {
+            return parsed;
+        }
+    }
+
+    return null;
 }
 
 sealed class PerformanceExtras

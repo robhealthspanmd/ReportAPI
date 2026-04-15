@@ -71,7 +71,6 @@ double? HemoglobinA1c
     public static Result Calculate(Inputs x)
     {
         if (x.ChronologicalAgeYears <= 0) throw new ArgumentOutOfRangeException(nameof(x.ChronologicalAgeYears));
-        if (x.PhenotypicAgeYears <= 0) throw new ArgumentOutOfRangeException(nameof(x.PhenotypicAgeYears));
 
         ZDetail? z1 = MakeZ(x.BodyFatPercentile, p => p > 85 ? 0.08 : p >= 50 ? 0.03 : p >= 26 ? -0.03 : p <= 25 ? -0.08 : (double?)null, x.ChronologicalAgeYears);
         ZDetail? z2 = MakeZ(x.VisceralFatPercentile, p => p > 85 ? 0.15 : p >= 50 ? 0.07 : p >= 21 ? -0.07 : p <= 20 ? -0.15 : (double?)null, x.ChronologicalAgeYears);
@@ -195,10 +194,10 @@ double? HemoglobinA1c
             (z7?.ContributionYears ?? 0) +
             (z8?.ContributionYears ?? 0);
 
-        double healthAgeUncapped = x.PhenotypicAgeYears + sumYears;
+        double healthAgeUncapped = x.ChronologicalAgeYears + sumYears;
         double maxTotalEffectYears = x.ChronologicalAgeYears * 0.20;
         double scaled = Math.Clamp(sumYears, -maxTotalEffectYears, maxTotalEffectYears);
-        double healthAgeFinal = x.PhenotypicAgeYears + scaled;
+        double healthAgeFinal = x.ChronologicalAgeYears + scaled;
 
         double deltaYears = healthAgeFinal - x.ChronologicalAgeYears;
         double deltaPct = (healthAgeFinal / x.ChronologicalAgeYears) - 1.0;
